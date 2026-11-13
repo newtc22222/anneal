@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Anneal</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..600;1,9..144,400..500&family=IBM+Plex+Mono:wght@400;500&family=Outfit:wght@300..600&display=swap">
+<style>
+/* Layout: sticky top bar; home is a wide topic map with an info card, lessons are one reading column.
+   Palette: the Patina/Temper paper, with Anneal's own heat scale — steel (not yet) to ember (learned). */
+:root {
+  --paper: #f3efe6; --paper-2: #e8e1d4; --card: #fbf8f2;
+  --ink: #1c1915; --ink-soft: #3f382f; --muted: #5e564e; --line: #ddd4c6;
+  --ember: #b8560f; --ember-deep: #8a3d08; --ember-soft: #f6e3d0; --amber: #e0962e;
+  --steel: #6f8292; --steel-soft: #dfe5ea;
+  --ok: #2f6b45; --ok-soft: #dcebdf;
+  --code: #241f1b; --code-fg: #f6f1e8; --code-dim: #b7aa9c; --code-key: #f0b08a; --code-str: #e7d3a4;
+  --code-ty: #a9d1c6; --code-num: #e9c27d; --code-mac: #9fc0ea; --code-line: #3c352e;
+  --f-display: "Fraunces", Georgia, serif;
+  --f-sans: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #161311; --paper-2: #221d19; --card: #1e1a17;
+    --ink: #f3efe6; --ink-soft: #e6dfd2; --muted: #b7aa9c; --line: #3c352e;
+    --ember: #f0954a; --ember-deep: #f7b47a; --ember-soft: #3a2619; --amber: #f5b75c;
+    --steel: #8fa3b3; --steel-soft: #26303a; --ok: #7fc495; --ok-soft: #1d2b21; --code: #100e0c;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #161311; --paper-2: #221d19; --card: #1e1a17;
+  --ink: #f3efe6; --ink-soft: #e6dfd2; --muted: #b7aa9c; --line: #3c352e;
+  --ember: #f0954a; --ember-deep: #f7b47a; --ember-soft: #3a2619; --amber: #f5b75c;
+  --steel: #8fa3b3; --steel-soft: #26303a; --ok: #7fc495; --ok-soft: #1d2b21; --code: #100e0c;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-font-smoothing: antialiased; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--f-sans); font-size: 16px; line-height: 1.55; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); background: var(--paper); z-index: 30; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 500; text-wrap: balance; margin: 0; line-height: 1.15; }
+p { margin: 0; text-wrap: pretty; }
+a { color: inherit; }
+code, pre { font-family: var(--f-mono); }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; border-radius: 3px; }
+::selection { background: var(--ember-soft); color: var(--ink); }
+button { font: inherit; color: inherit; cursor: pointer; }
+
+.wrap { max-width: 1160px; margin: 0 auto; padding-left: max(20px, env(safe-area-inset-left, 0px)); padding-right: max(20px, env(safe-area-inset-right, 0px)); }
+.narrow { max-width: 780px; }
+.skip { position: absolute; left: -999px; }
+.skip:focus { left: 16px; top: 16px; z-index: 50; background: var(--card); padding: 8px 12px; }
+
+/* Top bar */
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 20; background: var(--paper); }
+.top .rule { height: 4px; background: linear-gradient(90deg, var(--steel) 0%, var(--ember) 55%, var(--amber) 100%); }
+.top .bar { border-bottom: 1px solid var(--line); }
+.top .row { display: flex; align-items: center; gap: 8px; min-height: 56px; }
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand svg { width: 28px; height: 28px; flex: none; }
+.brand span { font-family: var(--f-display); font-size: 20px; }
+nav.main { display: flex; gap: 2px; margin-left: 16px; }
+nav.main a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 12px; border-radius: 8px; font-size: 14.5px; color: var(--muted); text-decoration: none; }
+nav.main a:hover, nav.main a[aria-current="page"] { color: var(--ink); }
+nav.main a[aria-current="page"] { box-shadow: inset 0 -2px 0 var(--ember); border-radius: 0; }
+.count { margin-left: auto; font-family: var(--f-mono); font-size: 14px; color: var(--muted); text-decoration: none; font-variant-numeric: tabular-nums; min-height: 44px; display: inline-flex; align-items: center; }
+@media (max-width: 640px) {
+  .top .row { flex-wrap: wrap; }
+  nav.main { order: 3; width: 100%; margin: 0; border-top: 1px solid var(--line); overflow-x: auto; }
+  nav.main a { padding: 0 10px; flex: none; }
+}
+
+main { padding-block: 40px 72px; }
+.eyebrow { font-family: var(--f-mono); font-size: 13.5px; color: var(--ember); }
+.lede { font-size: 18px; line-height: 1.6; color: var(--ink-soft); max-width: 44rem; }
+.muted { color: var(--muted); }
+.mono { font-family: var(--f-mono); }
+code.i { font-size: .88em; background: var(--paper-2); padding: .08em .35em; border-radius: 5px; }
+.btn { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--ember); background: var(--ember); color: var(--card); font-weight: 500; text-decoration: none; }
+.btn:hover { background: var(--ember-deep); border-color: var(--ember-deep); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .btn { color: #1c1915; } }
+:root[data-theme="dark"] .btn { color: #1c1915; }
+.btn.quiet { background: transparent; color: var(--ink); border-color: var(--line); }
+.btn.quiet:hover { border-color: var(--ink); }
+.btn.sm { min-height: 36px; padding: 0 12px; font-size: 14px; }
+.btn[disabled] { opacity: .4; cursor: default; }
+.link { color: var(--ink); text-decoration: underline; text-decoration-color: var(--line); text-underline-offset: 4px; }
+.link:hover { text-decoration-color: var(--ember); }
+
+/* Home */
+.hero h1 { font-size: clamp(36px, 6vw, 62px); max-width: 52rem; margin-top: 12px; }
+.hero .lede { margin-top: 18px; }
+.family { margin-top: 22px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 14.5px; color: var(--muted); }
+.family a, .family b { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; text-decoration: none; background: var(--card); }
+.family a:hover { border-color: var(--ink); }
+.family b { font-weight: 500; color: var(--ink); border-color: var(--ember); background: var(--ember-soft); }
+.family .arr { color: var(--muted); }
+.start-row { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.progress { margin-top: 18px; height: 4px; max-width: 340px; background: var(--steel-soft); }
+.progress i { display: block; height: 4px; background: linear-gradient(90deg, var(--ember), var(--amber)); }
+.qcount { margin-top: 10px; font-size: 14px; color: var(--muted); }
+.qcount b { color: var(--ink); font-weight: 500; font-variant-numeric: tabular-nums; }
+
+.mapsec { margin-top: 48px; }
+.mapsec-head { display: flex; justify-content: space-between; align-items: end; gap: 16px; flex-wrap: wrap; }
+.mapsec-head h2 { font-size: 32px; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.legend i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; border: 1.5px solid var(--steel); }
+.legend i.d { background: var(--ember); border-color: var(--ember); }
+.legend i.n { border-color: var(--ember); box-shadow: 0 0 0 3px var(--ember-soft); }
+.mapgrid { margin-top: 16px; }
+.mapbox { border: 1px solid var(--line); border-radius: 16px; background: var(--card); overflow: hidden; position: relative; }
+.mapscroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.mapscroll svg { display: block; width: 100%; min-width: 860px; height: auto; }
+.maphint { display: none; font-size: 12.5px; color: var(--muted); padding: 8px 14px; border-top: 1px solid var(--line); }
+@media (max-width: 900px) { .maphint { display: block; } }
+
+/* map drawing */
+.m-region rect { fill: var(--paper); stroke: var(--line); stroke-width: 1; }
+.m-region text { font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
+.m-edge { fill: none; stroke: var(--steel); stroke-width: 1.4; stroke-dasharray: 3 5; opacity: .7; transition: opacity .25s, stroke-width .25s, stroke .25s; }
+.m-edge.cross { opacity: .45; }
+.m-edge.warm { stroke: var(--ember); stroke-dasharray: none; stroke-width: 2; opacity: .85; }
+.m-dot { fill: var(--amber); }
+.m-node { cursor: pointer; }
+.m-node circle.c { fill: var(--card); stroke: var(--steel); stroke-width: 2; transition: fill .3s, stroke .3s, transform .3s; transform-box: fill-box; transform-origin: center; }
+.m-node text.n { font-family: var(--f-mono); font-size: 11px; fill: var(--steel); text-anchor: middle; dominant-baseline: central; pointer-events: none; }
+.m-node text.l { font-family: var(--f-sans); font-size: 13.5px; fill: var(--ink-soft); text-anchor: middle; pointer-events: none; }
+.m-node.ready circle.c { stroke: var(--ember); }
+.m-node.ready text.n { fill: var(--ember); }
+.m-node.done circle.c { fill: var(--ember); stroke: var(--ember); }
+.m-node.done text.n { fill: var(--card); }
+.m-node .ring { fill: none; stroke: var(--ember); stroke-width: 2; opacity: 0; transform-box: fill-box; transform-origin: center; }
+.m-node.next .ring { animation: pulse 2.2s ease-out infinite; }
+@keyframes pulse { 0% { opacity: .7; transform: scale(1); } 100% { opacity: 0; transform: scale(2.1); } }
+.m-node:hover circle.c, .m-node:focus-visible circle.c, .m-node.sel circle.c { transform: scale(1.18); }
+.m-node:focus { outline: none; }
+.m-node:focus-visible circle.c { stroke-width: 3.5; }
+.m-out rect { fill: var(--paper-2); stroke: var(--ink-soft); stroke-width: 1.2; }
+.m-out text { font-family: var(--f-display); font-size: 17px; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+.m-out text.s { font-family: var(--f-mono); font-size: 10.5px; fill: var(--muted); }
+.m-out { cursor: pointer; }
+.m-out:hover rect, .m-out:focus-visible rect { stroke: var(--ember); stroke-width: 2; }
+svg.dim .m-edge:not(.hl) { opacity: .12; }
+svg.dim .m-node:not(.hl), svg.dim .m-out:not(.hl) { opacity: .35; }
+svg.dim .m-edge.hl { opacity: 1; stroke-width: 2.6; stroke: var(--ember); stroke-dasharray: none; }
+.m-node, .m-out { transition: opacity .25s; }
+svg.intro .m-edge { stroke-dasharray: var(--len); stroke-dashoffset: var(--len); animation: draw .9s ease-out forwards; animation-delay: var(--d); }
+svg.intro .m-edge:not(.warm) { animation-name: drawCold; }
+@keyframes draw { to { stroke-dashoffset: 0; } }
+@keyframes drawCold { 99% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: 0; stroke-dasharray: 3 5; } }
+.pop { transform-box: fill-box; transform-origin: center; }
+svg.intro .pop { animation: pop .5s cubic-bezier(.2,.9,.3,1.3) both; animation-delay: var(--d); }
+@keyframes pop { from { opacity: 0; transform: scale(.4); } to { opacity: 1; transform: none; } }
+svg.launch .m-node.sel circle.c { transform: scale(3.2); fill: var(--ember); transition: transform .32s ease-in, fill .2s; }
+svg.launch > *:not(.m-nodes) { opacity: .15; transition: opacity .25s; }
+
+.infocard { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 16px; display: flex; flex-direction: column; gap: 8px; position: absolute; top: 14px; right: 14px; width: 280px; z-index: 2; box-shadow: 0 6px 24px rgba(28, 25, 21, .08); }
+.infocard .k { font-family: var(--f-mono); font-size: 12.5px; color: var(--ember); }
+.infocard h3 { font-size: 22px; }
+.infocard p { font-size: 14.5px; color: var(--ink-soft); }
+.infocard .rel { font-size: 13.5px; color: var(--muted); display: flex; flex-direction: column; gap: 4px; }
+.infocard .rel b { font-weight: 500; color: var(--ink-soft); }
+.infocard .rel a { color: var(--ink); text-underline-offset: 3px; text-decoration-color: var(--line); }
+.infocard .st { font-size: 13px; }
+@media (max-width: 1100px) { .mapbox { display: flex; flex-direction: column-reverse; } .infocard { position: static; width: auto; box-shadow: none; border: 0; border-top: 1px solid var(--line); border-radius: 0; } }
+
+.path { margin-top: 56px; }
+.path > h2 { font-size: 30px; }
+.track { margin-top: 28px; }
+.track h3 { font-family: var(--f-mono); font-size: 13.5px; color: var(--muted); font-weight: 400; }
+.track h3 span { color: var(--ink-soft); }
+.lessons { list-style: none; padding: 0; margin: 8px 0 0; border-top: 1px solid var(--line); }
+.lessons a { display: flex; align-items: center; gap: 16px; min-height: 58px; padding: 10px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
+.lessons a:hover .t { color: var(--ember-deep); }
+.lessons .num { width: 32px; flex: none; font-family: var(--f-display); font-style: italic; font-size: 19px; color: var(--ember); font-variant-numeric: tabular-nums; }
+.lessons .body { flex: 1; min-width: 0; }
+.lessons .t { display: block; font-family: var(--f-display); font-size: 20px; }
+.lessons .s { display: block; font-size: 14.5px; color: var(--muted); margin-top: 2px; }
+.lessons .min { flex: none; font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
+.lessons .tick { flex: none; width: 24px; height: 24px; border-radius: 50%; border: 1.5px solid var(--steel); display: grid; place-items: center; font-size: 13px; color: transparent; }
+.lessons .done .tick { background: var(--ember); border-color: var(--ember); color: var(--card); }
+@media (max-width: 560px) { .lessons .s { display: none; } }
+.reset { margin-top: 44px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 14px; color: var(--muted); }
+
+/* Lesson */
+.lesson-head h1 { font-size: clamp(32px, 5vw, 46px); margin-top: 8px; }
+.lesson-head .lede { margin-top: 14px; }
+.sits { margin-top: 26px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; }
+.sits-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--muted); }
+.sits-h .label { font-family: var(--f-mono); letter-spacing: .06em; text-transform: uppercase; font-size: 11.5px; }
+.sits svg { display: block; width: 100%; height: auto; }
+.mm-edge { fill: none; stroke: var(--steel); stroke-width: 1.5; stroke-dasharray: 3 5; }
+.mm-edge.warm { stroke: var(--ember); stroke-dasharray: none; stroke-width: 2; }
+.mm-node rect { fill: var(--paper); stroke: var(--steel); stroke-width: 1.4; }
+.mm-node.done rect { fill: var(--ember-soft); stroke: var(--ember); }
+.mm-node.out rect { fill: var(--paper-2); stroke: var(--ink-soft); }
+.mm-node.cur rect { fill: var(--ember); stroke: var(--ember); }
+.mm-node text { font-family: var(--f-sans); font-size: 13.5px; fill: var(--ink); dominant-baseline: central; }
+.mm-node text.n { font-family: var(--f-mono); font-size: 11.5px; fill: var(--muted); }
+.mm-node.cur text { fill: var(--card); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mm-node.cur text { fill: #1c1915; } }
+:root[data-theme="dark"] .mm-node.cur text { fill: #1c1915; }
+.mm-node.cur text.n { fill: var(--card); opacity: .8; }
+.mm-node { cursor: pointer; }
+.mm-node:hover rect { stroke-width: 2.4; }
+.mm-cap { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; fill: var(--muted); }
+
+.lesson-body { margin-top: 36px; display: flex; flex-direction: column; gap: 20px; font-size: 17px; line-height: 1.7; }
+.lesson-body h2 { font-size: 27px; margin-top: 14px; }
+.lesson-body ul { margin: 0; padding-left: 1.25em; display: flex; flex-direction: column; gap: 8px; }
+.lesson-body li::marker { color: var(--ember); }
+.callout { border-left: 3px solid var(--ember); background: var(--card); padding: 14px 18px; border-radius: 0 10px 10px 0; font-size: 15.5px; line-height: 1.6; }
+.callout.warn { border-left-color: var(--steel); }
+.callout .ct { font-family: var(--f-display); font-size: 19px; margin-bottom: 4px; }
+.code { border-radius: 12px; overflow: hidden; background: var(--code); color: var(--code-fg); }
+.code .cap { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--code-line); font-family: var(--f-mono); font-size: 12.5px; color: var(--code-dim); flex-wrap: wrap; }
+.code .cap button, .code .cap a { color: var(--code-dim); background: none; border: 1px solid var(--code-line); border-radius: 6px; padding: 3px 8px; font-size: 12px; text-decoration: none; font-family: var(--f-mono); }
+.code .cap button:hover, .code .cap a:hover { color: var(--code-fg); border-color: var(--code-dim); }
+.code .acts { display: flex; gap: 6px; }
+.code pre { margin: 0; padding: 16px 18px; overflow-x: auto; font-size: 13.5px; line-height: 1.65; }
+.code .out { border-top: 1px dashed var(--code-line); }
+.code .out .lbl { padding: 8px 18px 0; font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--code-dim); }
+.code .out pre { color: var(--code-str); padding-top: 6px; }
+.figcap { font-size: 14px; color: var(--muted); margin-top: -10px; }
+.k { color: var(--code-key); } .s { color: var(--code-str); } .c { color: var(--code-dim); font-style: italic; }
+.y { color: var(--code-ty); } .n { color: var(--code-num); } .m { color: var(--code-mac); } .l { color: var(--code-key); font-style: italic; }
+
+.pick { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 16px; margin: 0; }
+.pick legend { font-family: var(--f-display); font-size: 20px; padding: 0 4px; }
+.pick .opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 8px; }
+@media (max-width: 680px) { .pick .opts { grid-template-columns: minmax(0, 1fr); } }
+.pick label { display: block; cursor: pointer; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--code); min-width: 0; }
+.pick label .h { display: flex; align-items: center; gap: 8px; padding: 6px 10px; font-family: var(--f-mono); font-size: 12px; color: var(--code-dim); }
+.pick input { accent-color: var(--ember); }
+.pick label pre { margin: 0; padding: 10px 12px 12px; font-size: 12.5px; line-height: 1.6; color: var(--code-fg); overflow-x: auto; }
+.pick label.right { border-color: var(--ok); }
+.pick label.wrong { border-color: var(--ember); }
+.pick .res { margin-top: 12px; font-size: 15px; line-height: 1.6; color: var(--ink-soft); }
+.pick .res b { color: var(--ink); font-weight: 500; }
+.err { margin-top: 8px; font-family: var(--f-mono); font-size: 12.5px; background: var(--paper-2); border-left: 3px solid var(--ember); padding: 6px 10px; border-radius: 0 6px 6px 0; overflow-x: auto; white-space: pre; color: var(--ink); }
+
+/* Animated figures */
+.fig { border: 1px solid var(--line); border-radius: 14px; background: var(--card); overflow: hidden; margin: 0; }
+.fig-h { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 12px 8px 16px; border-bottom: 1px solid var(--line); }
+.fig-h .label { font-family: var(--f-mono); font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--ember); }
+.fig-ctl { display: flex; gap: 4px; align-items: center; }
+.fig-ctl button { min-width: 34px; height: 32px; border: 1px solid var(--line); background: var(--paper); border-radius: 8px; font-size: 13px; padding: 0 8px; }
+.fig-ctl button:hover { border-color: var(--ink); }
+.fig-ctl .ct { font-family: var(--f-mono); font-size: 12px; color: var(--muted); min-width: 40px; text-align: center; font-variant-numeric: tabular-nums; }
+.fig svg { display: block; width: 100%; height: auto; }
+.fig figcaption { padding: 10px 16px 14px; font-size: 15px; line-height: 1.55; color: var(--ink-soft); min-height: 3.4em; border-top: 1px solid var(--line); }
+.fig .dots { display: flex; gap: 4px; padding: 0 16px 12px; }
+.fig .dots i { width: 18px; height: 3px; border-radius: 2px; background: var(--line); }
+.fig .dots i.on { background: var(--ember); }
+.fg-mv { transition: transform .7s cubic-bezier(.45,.05,.2,1), opacity .5s; }
+.fig.snap .fg-mv, .fig.snap .fg-mv * { transition: none !important; }
+.fg-box { fill: var(--paper); stroke: var(--ink-soft); stroke-width: 1.4; }
+.fg-soft { fill: var(--paper-2); stroke: var(--line); stroke-width: 1.2; }
+.fg-t { font-family: var(--f-sans); font-size: 14px; fill: var(--ink); }
+.fg-tm { font-family: var(--f-mono); font-size: 12px; fill: var(--muted); }
+.fg-tb { font-family: var(--f-mono); font-size: 13px; fill: var(--ink); font-weight: 500; }
+.fg-tok circle, .fg-tok rect { fill: var(--steel-soft); stroke: var(--steel); stroke-width: 1.6; transition: fill .4s, stroke .4s; }
+.fg-tok text { font-family: var(--f-mono); font-size: 12px; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+.fg-tok.hot circle, .fg-tok.hot rect { fill: var(--ember); stroke: var(--ember); }
+.fg-tok.hot text { fill: var(--card); }
+.fg-tok.wait circle, .fg-tok.wait rect { stroke: var(--ember); stroke-dasharray: 4 3; }
+.fg-tok.dim { opacity: .45; }
+.fg-arrow { fill: none; stroke: var(--line); stroke-width: 2; transition: stroke .4s; }
+.fg-arrow.on { stroke: var(--ember); }
+.fg-line { fill: none; stroke: var(--line); stroke-width: 1.5; }
+.fg-flash { transition: fill .4s; }
+.fg-flash.on { fill: var(--ember-soft); }
+.fg-cell { fill: var(--paper); stroke: var(--line); stroke-width: 1; transition: fill .35s, stroke .35s; }
+.fg-cell.pt { fill: var(--steel-soft); stroke: var(--steel); }
+.fg-cell.fetched { fill: var(--ember-soft); }
+.fg-cell.pt.fetched { fill: var(--amber); stroke: var(--ember); }
+.fg-cell.cur, .fg-cell.pt.cur, .fg-cell.pt.fetched.cur { fill: var(--ember); stroke: var(--ember); }
+.fg-bar { fill: var(--ember); transition: transform .7s cubic-bezier(.45,.05,.2,1), opacity .4s; transform-box: fill-box; transform-origin: left center; }
+.fg-late { fill: var(--ember); }
+:root[data-theme="dark"] .fg-tok.hot text { fill: #1c1915; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fg-tok.hot text { fill: #1c1915; } }
+
+.links { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; font-size: 15.5px; }
+.links a { color: var(--ink); text-decoration-color: var(--line); text-underline-offset: 4px; font-weight: 500; }
+.links span { color: var(--muted); }
+
+.why { margin-top: 48px; background: var(--card); border: 1px solid var(--line); border-top: 3px solid var(--ember); border-radius: 0 0 14px 14px; padding: 22px 22px 8px; }
+.why h2 { font-size: 28px; }
+.why .sub { font-size: 14.5px; color: var(--muted); margin-top: 4px; }
+.why dl { margin: 16px 0 0; }
+.why dt { font-family: var(--f-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--ember); padding-top: 14px; border-top: 1px solid var(--line); }
+.why dt:first-child { border-top: 0; padding-top: 0; }
+.why dd { margin: 6px 0 14px; font-size: 16.5px; line-height: 1.65; color: var(--ink-soft); }
+
+.check { margin-top: 48px; border-top: 1px solid var(--line); padding-top: 32px; }
+.check h2 { font-size: 32px; }
+.check .st { margin-top: 6px; color: var(--ink-soft); }
+.qs { list-style: none; padding: 0; margin: 24px 0 0; display: flex; flex-direction: column; gap: 32px; }
+.qmeta { display: flex; gap: 10px; align-items: center; font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
+.tag { border-radius: 999px; padding: 1px 9px; font-size: 11.5px; border: 1px solid var(--line); color: var(--ink-soft); }
+.tag.why { border-color: var(--ember); color: var(--ember); }
+.qp { font-family: var(--f-display); font-size: 21px; margin-top: 6px; }
+.choices { list-style: none; padding: 0; margin: 12px 0 0; display: flex; flex-direction: column; gap: 8px; }
+.choices button { display: flex; gap: 12px; align-items: flex-start; width: 100%; min-height: 46px; text-align: left; border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 10px 14px; font-size: 16px; line-height: 1.45; }
+.choices button:hover:not([disabled]) { border-color: var(--ink); }
+.choices button .L { font-family: var(--f-mono); font-size: 14px; color: var(--ember); flex: none; padding-top: 1px; }
+.choices button.sel-right { border-color: var(--ok); background: var(--ok-soft); }
+.choices button.sel-wrong { border-color: var(--ember); }
+.choices button[disabled] { cursor: default; }
+.fb { margin-top: 10px; font-size: 15px; line-height: 1.6; color: var(--ink-soft); }
+.fb b { color: var(--ink); font-weight: 500; }
+.done-note { margin-top: 24px; padding: 14px 18px; border-radius: 10px; background: var(--ember-soft); color: var(--ink); }
+.pager { margin-top: 48px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.pager a { display: block; border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; text-decoration: none; background: var(--card); min-width: 0; }
+.pager a:hover { border-color: var(--ink); }
+.pager .d { font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
+.pager .t { font-family: var(--f-display); font-size: 19px; display: block; margin-top: 2px; }
+.pager .nx { text-align: right; grid-column: 2; }
+
+.ref h1 { font-size: clamp(32px, 5vw, 46px); margin-top: 8px; }
+.ref .lede { margin-top: 12px; }
+.terms { margin-top: 28px; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.term { padding: 16px 0; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 16px; }
+.term h2 { font-size: 20px; }
+.term p { color: var(--ink-soft); font-size: 15.5px; }
+.term a { font-size: 13.5px; color: var(--muted); }
+@media (max-width: 600px) { .term { grid-template-columns: minmax(0, 1fr); gap: 4px; } }
+.filter { margin-top: 22px; width: 100%; max-width: 360px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); padding: 0 14px; font: inherit; color: var(--ink); }
+.sheet { margin-top: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 760px) { .sheet { grid-template-columns: minmax(0, 1fr); } }
+.sheet section { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sheet h2 { font-size: 20px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.sheet table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.sheet td { padding: 8px 16px; border-top: 1px solid var(--line); vertical-align: top; }
+.sheet tr:first-child td { border-top: 0; }
+.sheet td:first-child { font-family: var(--f-mono); font-size: 12.5px; color: var(--ember-deep); width: 50%; overflow-wrap: anywhere; }
+.errs { margin-top: 28px; display: flex; flex-direction: column; gap: 20px; }
+.errcard { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+.errcard .code-id { font-family: var(--f-mono); color: var(--ember); font-size: 14px; }
+.errcard h2 { font-size: 23px; margin-top: 2px; }
+.errcard p { margin-top: 10px; color: var(--ink-soft); font-size: 15.5px; }
+.errcard p b { color: var(--ink); font-weight: 500; }
+.bf { margin-top: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 640px) { .bf { grid-template-columns: minmax(0, 1fr); } }
+.bf .code pre { font-size: 12.5px; padding: 12px 14px; }
+footer { border-top: 1px solid var(--line); padding-block: 28px; font-size: 14px; color: var(--muted); }
+footer p + p { margin-top: 8px; }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--paper); padding: 8px 14px; border-radius: 8px; font-size: 14px; z-index: 40; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style></head><body><div id="app"></div>
+<script>
+const CODE = {"a01": "use std::thread;\n\nfn main() {\n    let handle = thread::spawn(|| {\n        let sum: u64 = (1..=1_000_000).sum();\n        sum // the thread's return value\n    });\n    let sum = handle.join().unwrap(); // wait for it, and take the value\n    println!(\"sum = {sum}\");\n\n    let words = vec![\"patina\", \"temper\", \"anneal\", \"forge\"];\n    let total = thread::scope(|s| {\n        let a = s.spawn(|| words[..2].iter().map(|w| w.len()).sum::<usize>());\n        let b = s.spawn(|| words[2..].iter().map(|w| w.len()).sum::<usize>());\n        a.join().unwrap() + b.join().unwrap()\n    }); // every scoped thread has finished here\n    println!(\"{} letters in {:?}\", total, words);\n}\n", "a02": "use std::cell::RefCell;\nuse std::sync::{Arc, Mutex};\n\nfn is_send<T: Send>() {}\nfn is_sync<T: Sync>() {}\n\nfn main() {\n    is_send::<Arc<String>>();\n    is_sync::<Arc<String>>();\n    is_send::<RefCell<u32>>();       // may move to another thread\n    // is_sync::<RefCell<u32>>();    // may not be shared: error[E0277]\n    is_sync::<Mutex<Vec<u32>>>();    // Mutex makes shared access safe\n    // is_send::<std::rc::Rc<u32>>(); // error[E0277]\n    println!(\"every check passed, at compile time\");\n}\n", "a03": "use std::sync::{Arc, Mutex, RwLock};\nuse std::thread;\n\nfn main() {\n    let config = Arc::new(RwLock::new(String::from(\"v1\")));\n    let hits = Arc::new(Mutex::new(0u32));\n\n    let mut handles = Vec::new();\n    for i in 0..4 {\n        let config = Arc::clone(&config);\n        let hits = Arc::clone(&hits);\n        handles.push(thread::spawn(move || {\n            let version = config.read().unwrap().clone(); // many readers at once\n            *hits.lock().unwrap() += 1;                   // one writer at a time\n            format!(\"worker {i} saw {version}\")\n        }));\n    }\n    for h in handles {\n        println!(\"{}\", h.join().unwrap());\n    }\n\n    *config.write().unwrap() = String::from(\"v2\"); // waits until no reader holds it\n    println!(\"hits = {}, config = {}\", hits.lock().unwrap(), config.read().unwrap());\n}\n", "a04": "use std::sync::mpsc;\nuse std::thread;\n\nenum Command {\n    Add(u32),\n    Get(mpsc::Sender<u32>),\n}\n\nfn main() {\n    let (tx, rx) = mpsc::channel::<Command>();\n\n    // One thread owns the total. Nobody else can touch it, so no lock.\n    let owner = thread::spawn(move || {\n        let mut total = 0;\n        for cmd in rx {\n            match cmd {\n                Command::Add(n) => total += n,\n                Command::Get(reply) => reply.send(total).unwrap(),\n            }\n        }\n        total // the loop ends when every Sender is dropped\n    });\n\n    let workers: Vec<_> = (1..=3)\n        .map(|i| {\n            let tx = tx.clone();\n            thread::spawn(move || tx.send(Command::Add(i * 10)).unwrap())\n        })\n        .collect();\n    for w in workers {\n        w.join().unwrap();\n    }\n\n    let (reply_tx, reply_rx) = mpsc::channel();\n    tx.send(Command::Get(reply_tx)).unwrap();\n    println!(\"total so far: {}\", reply_rx.recv().unwrap());\n\n    drop(tx); // the last Sender: the owner's loop can end\n    println!(\"owner finished with {}\", owner.join().unwrap());\n}\n", "a05": "use std::sync::Arc;\nuse std::sync::atomic::{AtomicU64, Ordering};\nuse std::thread;\n\nfn run(correct: bool) -> u64 {\n    let count = Arc::new(AtomicU64::new(0));\n    let handles: Vec<_> = (0..8)\n        .map(|_| {\n            let count = Arc::clone(&count);\n            thread::spawn(move || {\n                for _ in 0..100_000 {\n                    if correct {\n                        count.fetch_add(1, Ordering::Relaxed); // one indivisible step\n                    } else {\n                        let n = count.load(Ordering::Relaxed); // read...\n                        count.store(n + 1, Ordering::Relaxed); // ...then write: another thread can slip in between\n                    }\n                }\n            })\n        })\n        .collect();\n    for h in handles {\n        h.join().unwrap();\n    }\n    count.load(Ordering::Relaxed)\n}\n\nfn main() {\n    println!(\"fetch_add:    {}\", run(true));\n    println!(\"load + store: {}\", run(false));\n}\n", "a06": "use std::hint::black_box;\nuse std::sync::{Arc, Mutex};\nuse std::thread;\nuse std::time::Instant;\n\nconst TOTAL: u64 = 8_000_000;\nconst THREADS: u64 = 8;\n\nfn main() {\n    // One shared counter behind one lock: every increment waits its turn.\n    let start = Instant::now();\n    let shared = Arc::new(Mutex::new(0u64));\n    let handles: Vec<_> = (0..THREADS)\n        .map(|_| {\n            let shared = Arc::clone(&shared);\n            thread::spawn(move || {\n                for _ in 0..TOTAL / THREADS {\n                    *shared.lock().unwrap() += 1;\n                }\n            })\n        })\n        .collect();\n    for h in handles {\n        h.join().unwrap();\n    }\n    println!(\"one lock:      {} in {} ms\", shared.lock().unwrap(), start.elapsed().as_millis());\n\n    // Each thread counts on its own, then the results are merged once.\n    let start = Instant::now();\n    let handles: Vec<_> = (0..THREADS)\n        .map(|_| {\n            thread::spawn(|| {\n                let mut local = 0u64;\n                for _ in 0..TOTAL / THREADS {\n                    local = black_box(local + 1);\n                }\n                local\n            })\n        })\n        .collect();\n    let sum: u64 = handles.into_iter().map(|h| h.join().unwrap()).sum();\n    println!(\"local + merge: {} in {} ms\", sum, start.elapsed().as_millis());\n}\n", "b07": "use std::future::Future;\nuse std::pin::Pin;\nuse std::task::{Context, Poll};\n\nstruct Countdown(u32);\n\nimpl Future for Countdown {\n    type Output = &'static str;\n\n    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {\n        if self.0 == 0 {\n            Poll::Ready(\"liftoff\")\n        } else {\n            println!(\"poll: {} left, returning Pending\", self.0);\n            self.0 -= 1;\n            cx.waker().wake_by_ref(); // \"poll me again soon\"\n            Poll::Pending\n        }\n    }\n}\n\nasync fn small() {\n    tokio::task::yield_now().await;\n}\n\nasync fn big() {\n    let buf = [0u8; 4096]; // lives across the .await, so it is stored in the future\n    tokio::task::yield_now().await;\n    println!(\"{}\", buf.len());\n}\n\n#[tokio::main]\nasync fn main() {\n    let out = Countdown(3).await;\n    println!(\"{out}\");\n\n    println!(\"small(): {} bytes\", std::mem::size_of_val(&small()));\n    println!(\"big():   {} bytes\", std::mem::size_of_val(&big()));\n}\n", "b08": "use std::time::{Duration, Instant};\n\n#[tokio::main]\nasync fn main() {\n    let start = Instant::now();\n    let mut handles = Vec::new();\n    for id in 0..10_000u64 {\n        // Each spawn is a task: a future handed to the runtime to drive.\n        handles.push(tokio::spawn(async move {\n            tokio::time::sleep(Duration::from_millis(50)).await;\n            id * 2\n        }));\n    }\n    let mut sum = 0;\n    for h in handles {\n        sum += h.await.unwrap(); // JoinHandle: wait for the task's result\n    }\n    println!(\"10,000 tasks, sum = {sum}, in {} ms\", start.elapsed().as_millis());\n}\n", "b09": "use std::time::{Duration, Instant};\n\n// A task that wants to run every 50 ms. Returns the worst gap it saw.\nasync fn ticker() -> u128 {\n    let mut last = Instant::now();\n    let mut worst = 0;\n    for _ in 0..6 {\n        tokio::time::sleep(Duration::from_millis(50)).await;\n        worst = worst.max(last.elapsed().as_millis());\n        last = Instant::now();\n    }\n    worst\n}\n\n#[tokio::main(flavor = \"current_thread\")] // one thread, to make the effect obvious\nasync fn main() {\n    let tick = tokio::spawn(ticker());\n    tokio::time::sleep(Duration::from_millis(10)).await;\n    tokio::spawn(async {\n        std::thread::sleep(Duration::from_millis(200)); // blocks the only thread\n    })\n    .await\n    .unwrap();\n    println!(\"blocking in a task:  worst gap {} ms\", tick.await.unwrap());\n\n    let tick = tokio::spawn(ticker());\n    tokio::time::sleep(Duration::from_millis(10)).await;\n    tokio::task::spawn_blocking(|| {\n        std::thread::sleep(Duration::from_millis(200)); // runs on a separate thread pool\n    })\n    .await\n    .unwrap();\n    println!(\"spawn_blocking:      worst gap {} ms\", tick.await.unwrap());\n}\n", "b10": "use std::time::Duration;\nuse tokio::time::{sleep, timeout};\n\nstruct Cleanup(&'static str);\n\nimpl Drop for Cleanup {\n    fn drop(&mut self) {\n        println!(\"  drop: {}\", self.0);\n    }\n}\n\nasync fn slow_query() -> &'static str {\n    let _guard = Cleanup(\"query state released\");\n    sleep(Duration::from_millis(500)).await;\n    \"rows\"\n}\n\n#[tokio::main]\nasync fn main() {\n    match timeout(Duration::from_millis(100), slow_query()).await {\n        Ok(rows) => println!(\"got {rows}\"),\n        Err(_) => println!(\"timeout: gave up after 100 ms\"),\n    }\n\n    tokio::select! {\n        rows = slow_query() => println!(\"got {rows}\"),\n        _ = sleep(Duration::from_millis(100)) => println!(\"select: the timer won\"),\n    }\n}\n", "b11": "use std::time::{Duration, Instant};\nuse tokio::sync::mpsc;\n\n#[tokio::main]\nasync fn main() {\n    let start = Instant::now();\n    let ms = move || start.elapsed().as_millis() / 10 * 10; // rounded to 10 ms\n    let (tx, mut rx) = mpsc::channel::<u32>(2); // room for two jobs\n\n    let producer = tokio::spawn(async move {\n        for job in 1..=5 {\n            tx.send(job).await.unwrap(); // waits while the channel is full\n            println!(\"{:>4} ms  sent {job}\", ms());\n        }\n    });\n\n    while let Some(job) = rx.recv().await {\n        tokio::time::sleep(Duration::from_millis(100)).await; // a slow consumer\n        println!(\"{:>4} ms    handled {job}\", ms());\n    }\n    producer.await.unwrap();\n}\n", "b12": "use std::time::Duration;\nuse tokio::task::JoinSet;\nuse tokio::time::sleep;\nuse tokio_util::sync::CancellationToken;\n\nasync fn worker(id: u32, token: CancellationToken) -> String {\n    let mut jobs = 0;\n    loop {\n        tokio::select! {\n            _ = token.cancelled() => break,       // stop between jobs\n            _ = sleep(Duration::from_millis(60)) => jobs += 1, // one job\n        }\n    }\n    format!(\"worker {id} stopped after {jobs} jobs\")\n}\n\n#[tokio::main]\nasync fn main() {\n    let token = CancellationToken::new();\n    let mut workers = JoinSet::new();\n    for id in 1..=3 {\n        workers.spawn(worker(id, token.clone()));\n    }\n\n    // In a real service: tokio::signal::ctrl_c().await\n    sleep(Duration::from_millis(200)).await;\n    println!(\"shutdown signal\");\n    token.cancel();\n\n    let mut reports: Vec<String> = Vec::new();\n    while let Some(done) = workers.join_next().await {\n        reports.push(done.unwrap());\n    }\n    reports.sort();\n    for r in reports {\n        println!(\"{r}\");\n    }\n    println!(\"all workers finished, exiting\");\n}\n", "c13": "use std::mem::{align_of, size_of};\n\n#[allow(dead_code)]\nstruct Loose {\n    a: u8,\n    b: u32,\n    c: u8,\n}\n\n#[allow(dead_code)]\n#[repr(C)] // C layout: fields stay in the written order\nstruct InOrder {\n    a: u8,\n    b: u32,\n    c: u8,\n}\n\nfn main() {\n    println!(\"Loose:   size {:>2}, align {}\", size_of::<Loose>(), align_of::<Loose>());\n    println!(\"InOrder: size {:>2}, align {}\", size_of::<InOrder>(), align_of::<InOrder>());\n    println!(\"u64:               {:>2}\", size_of::<u64>());\n    println!(\"Option<u64>:       {:>2}\", size_of::<Option<u64>>());\n    println!(\"Box<u64>:          {:>2}\", size_of::<Box<u64>>());\n    println!(\"Option<Box<u64>>:  {:>2}\", size_of::<Option<Box<u64>>>());\n    println!(\"&str:              {:>2}\", size_of::<&str>());\n    println!(\"String / Vec<u8>:  {:>2}\", size_of::<String>());\n}\n", "c14": "use std::alloc::{GlobalAlloc, Layout, System};\nuse std::fmt::Write;\nuse std::sync::atomic::{AtomicUsize, Ordering::Relaxed};\n\n// Wraps the system allocator and counts every allocation.\nstruct Counting;\nstatic ALLOCS: AtomicUsize = AtomicUsize::new(0);\n\nunsafe impl GlobalAlloc for Counting {\n    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {\n        ALLOCS.fetch_add(1, Relaxed);\n        unsafe { System.alloc(layout) }\n    }\n    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {\n        unsafe { System.dealloc(ptr, layout) }\n    }\n}\n\n#[global_allocator]\nstatic GLOBAL: Counting = Counting;\n\nfn allocations(f: impl FnOnce()) -> usize {\n    let before = ALLOCS.load(Relaxed);\n    f();\n    ALLOCS.load(Relaxed) - before\n}\n\nfn main() {\n    let grow = allocations(|| {\n        let mut v = Vec::new();\n        for i in 0..1000 {\n            v.push(i); // the buffer grows by doubling, copying each time\n        }\n    });\n    let sized = allocations(|| {\n        let mut v = Vec::with_capacity(1000);\n        for i in 0..1000 {\n            v.push(i);\n        }\n    });\n    let fresh = allocations(|| {\n        for i in 0..1000 {\n            let line = format!(\"GET /notes/{i}\"); // a new String every time\n            std::hint::black_box(&line);\n        }\n    });\n    let reused = allocations(|| {\n        let mut line = String::with_capacity(32);\n        for i in 0..1000 {\n            line.clear(); // keeps the capacity\n            write!(line, \"GET /notes/{i}\").unwrap();\n            std::hint::black_box(&line);\n        }\n    });\n    println!(\"Vec::new + 1000 pushes:      {grow} allocations\");\n    println!(\"Vec::with_capacity(1000):    {sized}\");\n    println!(\"format! 1000 times:          {fresh}\");\n    println!(\"one String, cleared, reused: {reused}\");\n}\n", "c15": "use std::hint::black_box;\nuse std::time::Instant;\n\n#[derive(Clone, Copy)]\nstruct Point {\n    x: f64,\n    y: f64,\n}\n\nconst N: usize = 2_000_000;\n\nfn main() {\n    // Side by side: one allocation, Points next to each other.\n    let flat: Vec<Point> = (0..N).map(|i| Point { x: i as f64, y: 1.0 }).collect();\n\n    // One Box per Point: same values, but each Point is its own allocation.\n    let mut boxed: Vec<Box<Point>> = (0..N).map(|i| Box::new(Point { x: i as f64, y: 1.0 })).collect();\n    // Shuffle the pointers, as happens after a program has run for a while:\n    // neighbours in the Vec now point far apart in memory.\n    let mut seed = 0x2545_f491_4f6c_dd1du64;\n    for i in (1..N).rev() {\n        seed ^= seed << 13;\n        seed ^= seed >> 7;\n        seed ^= seed << 17;\n        boxed.swap(i, (seed % (i as u64 + 1)) as usize);\n    }\n\n    for round in 0..2 {\n        let t = Instant::now();\n        let a: f64 = black_box(&flat).iter().map(|p| p.x + p.y).sum();\n        let flat_ms = t.elapsed().as_secs_f64() * 1000.0;\n\n        let t = Instant::now();\n        let b: f64 = black_box(&boxed).iter().map(|p| p.x + p.y).sum();\n        let boxed_ms = t.elapsed().as_secs_f64() * 1000.0;\n\n        if round == 1 {\n            println!(\"Vec<Point>:      {flat_ms:>5.1} ms (sum {a})\");\n            println!(\"Vec<Box<Point>>: {boxed_ms:>5.1} ms (sum {b})\");\n        }\n    }\n}\n", "c16": "use std::mem::size_of;\n\ntrait Shape {\n    fn area(&self) -> f64;\n}\n\nstruct Square(f64);\nstruct Circle(f64);\n\nimpl Shape for Square {\n    fn area(&self) -> f64 {\n        self.0 * self.0\n    }\n}\nimpl Shape for Circle {\n    fn area(&self) -> f64 {\n        3.14159 * self.0 * self.0\n    }\n}\n\n// Static dispatch: one compiled copy per type; the call is direct.\nfn total_generic<T: Shape>(shapes: &[T]) -> f64 {\n    shapes.iter().map(|s| s.area()).sum()\n}\n\n// Dynamic dispatch: one compiled copy; each call looks up a vtable.\nfn total_dyn(shapes: &[Box<dyn Shape>]) -> f64 {\n    shapes.iter().map(|s| s.area()).sum()\n}\n\nfn main() {\n    let squares = vec![Square(1.0), Square(2.0)];\n    let mixed: Vec<Box<dyn Shape>> = vec![Box::new(Square(1.0)), Box::new(Circle(1.0))];\n    println!(\"generic, squares only: {}\", total_generic(&squares));\n    println!(\"dyn, mixed:            {:.2}\", total_dyn(&mixed));\n    println!(\"&Square:     {} bytes\", size_of::<&Square>());\n    println!(\"&dyn Shape:  {} bytes (data pointer + vtable pointer)\", size_of::<&dyn Shape>());\n}\n", "c17": "use std::hint::black_box;\nuse std::time::Instant;\n\nfn sum_of_squares(n: u64) -> u64 {\n    (0..n).map(|x| x * x % 7).sum()\n}\n\nfn main() {\n    let t = Instant::now();\n    let r = sum_of_squares(black_box(50_000_000)); // black_box: the optimizer can't precompute it\n    println!(\"result {r} in {} ms\", t.elapsed().as_millis());\n}\n", "d18": "/// Split one mutable slice into two that do not overlap.\nfn split_halves(v: &mut [u32]) -> (&mut [u32], &mut [u32]) {\n    let mid = v.len() / 2;\n    let ptr = v.as_mut_ptr();\n    // SAFETY: `ptr` is valid for `v.len()` elements. The two ranges\n    // [0, mid) and [mid, len) do not overlap, so the two &mut never alias,\n    // and both borrow from `v`, so they cannot outlive it.\n    unsafe {\n        (\n            std::slice::from_raw_parts_mut(ptr, mid),\n            std::slice::from_raw_parts_mut(ptr.add(mid), v.len() - mid),\n        )\n    }\n}\n\nfn main() {\n    let mut data = [1, 2, 3, 4, 5, 6];\n    let (left, right) = split_halves(&mut data);\n    left[0] = 10;\n    right[0] = 40;\n    println!(\"{data:?}\");\n\n    // The standard library already provides this, safely wrapped:\n    let (a, b) = data.split_at_mut(3);\n    a[1] += b[1];\n    println!(\"{data:?}\");\n}\n", "d19": "use std::ffi::{CString, c_char, c_int};\n\n// Functions from the C standard library, which every Rust program on Linux links.\nunsafe extern \"C\" {\n    safe fn abs(x: c_int) -> c_int;              // takes a number: nothing can go wrong\n    fn strlen(s: *const c_char) -> usize;        // takes a raw pointer: unsafe to call\n}\n\n/// A safe wrapper: the only way in is a Rust &str.\nfn c_len(text: &str) -> usize {\n    let c = CString::new(text).expect(\"no NUL bytes inside\");\n    // SAFETY: `c` is a valid, NUL-terminated string that lives until the call returns.\n    unsafe { strlen(c.as_ptr()) }\n}\n\nfn main() {\n    println!(\"abs(-42) = {}\", abs(-42));\n    println!(\"strlen(\\\"anneal\\\") = {}\", c_len(\"anneal\"));\n}\n", "before_list": "#[derive(Clone)]\nstruct AppState {\n    notes: Arc<Mutex<Vec<Note>>>,\n}\n\nasync fn list_notes(State(state): State<AppState>) -> Json<Vec<Note>> {\n    let notes = state.notes.lock().expect(\"notes lock\");\n    Json(notes.clone()) // 2,000 notes copied, lock held the whole time\n}\n", "after_list": "#[derive(Clone)]\nstruct AppState {\n    notes: Arc<RwLock<Arc<Vec<Note>>>>,\n}\n\nasync fn list_notes(State(state): State<AppState>) -> Json<Arc<Vec<Note>>> {\n    let snapshot = state.notes.read().expect(\"notes lock\").clone(); // clones the Arc, not the notes\n    Json(snapshot) // the lock is already released here\n}\n\nasync fn create_note(\n    State(state): State<AppState>,\n    Json(new_note): Json<NewNote>,\n) -> (StatusCode, Json<Note>) {\n    let mut notes = state.notes.write().expect(\"notes lock\");\n    let note = Note { id: notes.len() as u64 + 1, title: new_note.title, body: new_note.body };\n    Arc::make_mut(&mut notes).push(note.clone()); // copies the Vec only if a reader still holds the old snapshot\n    (StatusCode::CREATED, Json(note))\n}\n"};
+// Anneal — lessons 1–12. Inline code in `backticks`, **bold** for emphasis.
+// needs: lessons (or the outside courses "patina" / "temper") this one builds on. The map draws these.
+const OUTSIDE = {
+  patina: { title: "Patina", summary: "The core language: ownership, borrows, traits, iterators.", href: "https://patina-rust.netlify.app" },
+  temper: { title: "Temper", summary: "A web service with Axum: handlers, JSON, shared state.", href: "https://temper-axum.netlify.app" }
+};
+
+const TRACKS = [
+  { id: "threads", title: "Sharing between threads", short: "Threads", summary: "Who may touch what, and the cost of waiting for a lock." },
+  { id: "async", title: "Async underneath", short: "Async", summary: "What a future is, what a task is, and how work stops." },
+  { id: "memory", title: "Memory and speed", short: "Memory", summary: "Layout, allocation, locality, and measuring honestly." },
+  { id: "edges", title: "The edges", short: "Edges", summary: "Where the compiler stops checking, and you take over." },
+  { id: "load", title: "Under load", short: "Load", summary: "Temper's notes service, measured, fixed, measured again." }
+];
+
+const LESSONS = [
+{
+  slug: "threads", track: "threads", minutes: 8, needs: ["patina"],
+  title: "Threads and join",
+  summary: "`spawn` starts an OS thread. `join` waits for it. Scoped threads may borrow.",
+  blocks: [
+    { type: "p", text: "Patina and Temper ran on threads you never saw. This course opens the hood. It starts with the plainest tool: an operating-system thread." },
+    { type: "code", code: CODE.a01, out: `sum = 500000500000
+23 letters in ["patina", "temper", "anneal", "forge"]` },
+    { type: "ul", items: [
+      "`thread::spawn` runs a closure on a new thread and returns a `JoinHandle`.",
+      "`join()` waits for the thread to finish and hands back what the closure returned. If the thread panicked, `join` returns `Err`.",
+      "`thread::scope` starts threads that are **guaranteed** to finish before the scope ends. Because of that guarantee, they may borrow `words` from the stack."
+    ] },
+    { type: "pick", prompt: "A plain `spawn` wants to print a local Vec. Which compiles?", a: `let v = vec![1];
+thread::spawn(|| println!("{v:?}"));`, b: `let v = vec![1];
+thread::spawn(move || println!("{v:?}"));`, answer: "b", error: "error[E0373]: closure may outlive the current function, but it borrows `v`", why: "A plain spawned thread may still be running after the function returns and `v` is dropped. `move` gives the thread its own `v`. Scoped threads are the other fix: they cannot outlive the scope, so borrowing is fine there." },
+    { type: "callout", title: "Concurrency is not parallelism", text: "Two threads are **concurrent**: both are in progress. They run **in parallel** only if there are free CPU cores. Every timing in this course was measured on a 2-core cloud machine, so treat the numbers as directions, not promises." }
+  ],
+  why: {
+    without: "Without threads, a program uses one core and does one thing at a time. A slow computation or a blocking call stops everything else.",
+    answer: "Rust's threads are real OS threads with no runtime in between. The type system decides what may cross into them: owned data moved in, or borrows when a scope guarantees the thread ends first.",
+    cost: "OS threads are heavy (each has its own stack, and switching between them goes through the kernel). Thousands of mostly-waiting tasks need async instead."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does `handle.join()` return?", choices: ["The closure's return value, or Err if the thread panicked", "Nothing; it only waits", "The thread's ID"], answer: 0, why: "`join` waits and returns `Result<T, _>` with whatever the closure returned." },
+    { kind: "what", prompt: "Why may threads in `thread::scope` borrow local variables?", choices: ["Scoped threads always finish before the scope ends", "They run on the same core", "They copy everything automatically"], answer: 0, why: "The borrow checker needs to know the borrow ends before the data is dropped. The scope guarantees it." },
+    { kind: "why", prompt: "Why does a plain `thread::spawn` closure need `move` to use a local?", choices: ["The thread might outlive the function that owns the local", "move makes it faster", "Closures cannot read variables"], answer: 0, why: "The local would be dropped when the function returns, while the thread could still be reading it." }
+  ]
+},
+{
+  slug: "send-sync", track: "threads", minutes: 9, needs: ["threads"],
+  title: "Send and Sync",
+  summary: "Two labels the compiler puts on every type. Thread boundaries check them.",
+  blocks: [
+    { type: "p", text: "When you call `spawn`, the compiler checks that everything moving into the new thread is safe to move there. It decides that from two **marker traits**. They have no methods. They only label a type." },
+    { type: "ul", items: [
+      "`Send`: a value of this type may be **moved** to another thread.",
+      "`Sync`: a **shared reference** `&T` to this type may be used from several threads at once."
+    ] },
+    { type: "code", code: CODE.a02, out: "every check passed, at compile time" },
+    { type: "p", text: "You almost never write these traits. The compiler derives them: a struct is `Send` if all its fields are, and `Sync` if all its fields are. One non-thread-safe field makes the whole struct non-thread-safe." },
+    { type: "ul", items: [
+      "`Rc<T>`: neither. Its reference count is a plain integer, so two threads updating it could lose a change.",
+      "`Arc<T>`: both, if `T` is. Its count is updated atomically.",
+      "`RefCell<T>`: `Send` but not `Sync`. Its borrow tracking is not thread-safe.",
+      "`Mutex<T>`: `Sync` whenever `T` is `Send`. The lock is what makes sharing safe."
+    ] },
+    { type: "pick", prompt: "Which one compiles?", a: `let n = Rc::new(5);
+thread::spawn(move || println!("{n}"));`, b: `let n = Arc::new(5);
+thread::spawn(move || println!("{n}"));`, answer: "b", error: "error[E0277]: `Rc<i32>` cannot be sent between threads safely", why: "`spawn` requires its closure to be `Send`, so everything the closure owns must be `Send`. `Rc` is not." },
+    { type: "callout", tone: "warn", title: "unsafe impl Send is a promise", text: "You can write `unsafe impl Send for MyType {}`. That tells the compiler to trust you. If the type is not actually safe to send, the result is undefined behaviour. Lesson 18 is about promises like that." }
+  ],
+  why: {
+    without: "In Java, a `HashMap` can be handed to two threads, and nothing stops it. It works in tests and corrupts itself under load. Thread safety lives in documentation.",
+    answer: "Rust records thread safety in the type itself. A library marks `Rc` as not `Send` once, and every program using it is protected. Data races become compile errors, at no runtime cost.",
+    cost: "Errors about `Send` can point far from the real cause (the error lists the chain of fields). And these labels say nothing about deadlocks or logic mistakes."
+  },
+  quiz: [
+    { kind: "what", prompt: "`T: Sync` means…", choices: ["&T can be used from several threads at once", "T is immutable", "T has no heap data"], answer: 0, why: "Formally, `T` is `Sync` exactly when `&T` is `Send`." },
+    { kind: "what", prompt: "How does your own struct become Send?", choices: ["Automatically, if every field is Send", "You must always write impl Send", "By wrapping it in Box"], answer: 0, why: "`Send` and `Sync` are auto traits, derived from the fields." },
+    { kind: "why", prompt: "Why is Rc not Send, while Arc is?", choices: ["Rc's reference count is not atomic, so two threads could corrupt it", "Rc is slower", "Rc cannot hold strings"], answer: 0, why: "Two threads incrementing a plain counter can lose an update, and then the value is freed too early or never." }
+  ]
+},
+{
+  slug: "locks", track: "threads", minutes: 9, needs: ["send-sync"], figure: "mutex",
+  title: "Arc, Mutex, RwLock",
+  summary: "`Arc` shares ownership. A lock decides who may touch the data right now.",
+  blocks: [
+    { type: "p", text: "`Arc` answers \"who frees this?\": the last owner. It gives only shared, read-only access. To change shared data you also need a lock." },
+    { type: "figure", id: "mutex" },
+    { type: "code", code: CODE.a03, out: `worker 0 saw v1
+worker 1 saw v1
+worker 2 saw v1
+worker 3 saw v1
+hits = 4, config = v2` },
+    { type: "ul", items: [
+      "`Mutex<T>`: one holder at a time. `lock()` waits its turn and returns a **guard**. The guard unlocks when it is dropped.",
+      "`RwLock<T>`: many readers **or** one writer. Good for data read often and changed rarely, like configuration.",
+      "The data is **inside** the lock. There is no way to reach it without locking, and no way to forget to unlock."
+    ] },
+    { type: "callout", title: "Poisoning", text: "If a thread panics while holding a std lock, the lock is marked **poisoned**, and later `lock()` calls return `Err`. That is why the examples call `.unwrap()` or `.expect()`: it says \"if another thread crashed mid-update, crash too\". Tokio's locks do not poison." },
+    { type: "callout", title: "From Temper", text: "Temper's notes service is `Arc<Mutex<Vec<Note>>>`. `State` clones the `Arc` (a counter bump), and each handler locks the `Vec` for one short critical section. In the last lesson you will measure what that costs." }
+  ],
+  why: {
+    without: "Shared data needs two answers: who frees it when the last user is done, and who may change it right now. In Java, the lock and the data are separate objects, so nothing stops code from touching the data without the lock.",
+    answer: "`Arc` gives shared ownership with a thread-safe count. The lock owns the data, so access without the lock does not compile, and the guard's drop makes unlocking automatic.",
+    cost: "Waiting for a lock is time lost. The borrow checker no longer protects you from deadlocks, only from data races."
+  },
+  quiz: [
+    { kind: "what", prompt: "When is a Mutex unlocked?", choices: ["When the guard returned by lock() is dropped", "When you call unlock()", "When the thread ends"], answer: 0, why: "The guard is the borrow. Its drop releases the lock, on every path out of the scope." },
+    { kind: "what", prompt: "Which lock lets many readers in at once?", choices: ["RwLock", "Mutex", "Arc"], answer: 0, why: "`RwLock` allows many readers or one writer. A `Mutex` allows one holder, whatever it is doing." },
+    { kind: "why", prompt: "Why does the Mutex own the data instead of sitting beside it?", choices: ["So the data cannot be reached without taking the lock", "It saves memory", "So it can be cloned"], answer: 0, why: "Putting the data inside the lock turns \"remember to lock\" into a type rule." }
+  ]
+},
+{
+  slug: "channels", track: "threads", minutes: 9, needs: ["send-sync"], figure: "owner",
+  title: "Channels and one owner",
+  summary: "Instead of sharing data, give it one owner and send it messages.",
+  blocks: [
+    { type: "p", text: "A channel has a sending end and a receiving end. Sending **moves** the value: the sender no longer has it. That gives a design with no locks at all. One thread owns the state, and everyone else sends it requests." },
+    { type: "figure", id: "owner" },
+    { type: "code", code: CODE.a04, out: `total so far: 60
+owner finished with 60` },
+    { type: "ul", items: [
+      "`mpsc` means multiple producers, single consumer. `tx.clone()` makes another sender. There is only one receiver.",
+      "`for cmd in rx` runs until **every** sender is dropped. That is the shutdown signal, and it is just ownership.",
+      "A request that needs an answer carries its own reply channel (`Get(Sender<u32>)`)."
+    ] },
+    { type: "callout", title: "The actor pattern", text: "A task or thread that owns some state and processes messages one at a time is often called an **actor**. Nothing is shared, so there is nothing to lock and no deadlock between locks. Updates are processed in the order they arrive." },
+    { type: "callout", title: "If you know Java or TypeScript", text: "Like a `BlockingQueue` feeding one worker thread in Java, or `postMessage` to a Web Worker in JavaScript. In Rust, the moved value is gone from the sender, so it cannot be changed after it was sent." }
+  ],
+  why: {
+    without: "With shared state, every user must take a lock, and the more users there are, the more they wait for each other. Invariants spread across many critical sections are easy to break.",
+    answer: "Moving data through a channel keeps one owner for the state. The compiler's ownership rules already guarantee no one else touches it.",
+    cost: "Every operation is a message plus a wait for the reply. One owner is one thread's worth of throughput."
+  },
+  quiz: [
+    { kind: "what", prompt: "When does `for cmd in rx` stop?", choices: ["When every Sender has been dropped", "After a timeout", "Never"], answer: 0, why: "Receiving ends when no sender is left. Dropping the last sender is the shutdown." },
+    { kind: "what", prompt: "What happens to a value after `tx.send(value)`?", choices: ["It is moved; the sender can no longer use it", "It is copied", "It is shared by reference"], answer: 0, why: "Sending transfers ownership to the receiver." },
+    { kind: "why", prompt: "Why does the single-owner design need no Mutex?", choices: ["Only one thread ever touches the state; others send messages", "Channels contain a hidden Mutex for the state", "The state is immutable"], answer: 0, why: "Exclusive ownership already rules out concurrent access. The channel only carries requests." }
+  ]
+},
+{
+  slug: "atomics", track: "threads", minutes: 8, needs: ["locks"],
+  title: "Atomics",
+  summary: "A single number shared without a lock, and the bug that compiles anyway.",
+  blocks: [
+    { type: "p", text: "For one counter or flag, a whole lock is more than you need. Atomic types (`AtomicU64`, `AtomicBool`, …) offer operations the CPU performs as one indivisible step." },
+    { type: "code", code: CODE.a05, out: `fetch_add:    800000
+load + store: 677241`, caption: "The second number changes on every run. Measured on a 2-core machine." },
+    { type: "p", text: "Both versions compile. Both are free of data races, because every access is atomic. Only the first is correct. `load` followed by `store` is two steps, and another thread can increment in between. That update is then overwritten." },
+    { type: "callout", tone: "warn", title: "Compiles, still wrong", text: "Rust prevents **data races**: unsynchronised access to the same memory. It does not prevent **race conditions**: logic that depends on timing. Read-modify-write needs one operation (`fetch_add`, `compare_exchange`), or a lock around the whole step." },
+    { type: "h", text: "Ordering, briefly" },
+    { type: "p", text: "Every atomic operation takes an `Ordering`. `Relaxed` makes the operation itself atomic and nothing more, which is enough for a counter you read at the end. When an atomic flag announces that **other** data is ready, you need `Release` on the store and `Acquire` on the load. `SeqCst` is the strictest and the safest default when unsure." }
+  ],
+  why: {
+    without: "A Mutex around a single counter makes every increment wait in line, and holds a lock for one machine instruction's worth of work.",
+    answer: "Atomics use the CPU's own indivisible instructions. There is no waiting queue and no guard, and Rust still checks that they are shared safely (`AtomicU64` is `Sync`).",
+    cost: "Only single values. Combining two atomics is not atomic. Orderings beyond `Relaxed` and `SeqCst` are subtle, and getting them wrong compiles."
+  },
+  quiz: [
+    { kind: "what", prompt: "Why did `load` then `store` lose updates?", choices: ["Another thread could increment between the two steps", "Relaxed ordering drops writes", "Atomics are not thread-safe"], answer: 0, why: "Each step is atomic on its own. The pair is not." },
+    { kind: "what", prompt: "Which ordering is enough for a counter read once at the end?", choices: ["Relaxed", "Acquire", "None; counters need a Mutex"], answer: 0, why: "`Relaxed` makes each operation atomic, which is all a counter needs." },
+    { kind: "why", prompt: "What does Rust guarantee about the buggy version?", choices: ["No data race, but the logic can still be wrong", "It cannot compile", "It is always correct"], answer: 0, why: "Memory safety and correct logic are different things. Rust guarantees the first." }
+  ]
+},
+{
+  slug: "contention", track: "threads", minutes: 9, needs: ["locks", "atomics", "channels"],
+  title: "Deadlocks and contention",
+  summary: "Waiting forever, and waiting a lot. Neither is a compile error.",
+  blocks: [
+    { type: "h", text: "Deadlock: waiting forever" },
+    { type: "p", text: "Thread A holds lock 1 and waits for lock 2. Thread B holds lock 2 and waits for lock 1. Neither ever continues. Rust compiles this happily." },
+    { type: "code", code: `// Thread A
+let _a = accounts.lock().unwrap();
+let _b = audit_log.lock().unwrap();
+
+// Thread B: same locks, opposite order. They can block each other forever.
+let _b = audit_log.lock().unwrap();
+let _a = accounts.lock().unwrap();`, file: "fragment" },
+    { type: "ul", items: [
+      "Always take several locks in the **same order** everywhere.",
+      "Keep critical sections short, and never call unknown code (or `.await`) while holding a lock.",
+      "A std `Mutex` is not re-entrant: locking it twice on the same thread deadlocks or panics."
+    ] },
+    { type: "h", text: "Contention: waiting a lot" },
+    { type: "p", text: "A lock is correct and still slow when many threads want it at once. Each one waits while another holds it." },
+    { type: "code", code: CODE.a06, out: `one lock:      8000000 in 643 ms
+local + merge: 8000000 in 1 ms`, caption: "Release build, 2-core machine. Your numbers will differ; the gap will not disappear." },
+    { type: "p", text: "Same answer, about 600 times slower. The first version spends its time handing one lock back and forth. The second gives each thread its own counter and merges once at the end." },
+    { type: "callout", title: "Ways out", text: "Per-thread state merged at the end. Atomics for single numbers. `RwLock` for read-mostly data. Splitting one big lock into several (sharding). Or one owner and a channel (lesson 4). Choose by measuring." }
+  ],
+  why: {
+    without: "It is tempting to believe that compiling means the concurrency is right. It means there is no data race. It does not mean threads make progress, or that they do so quickly.",
+    answer: "Deadlocks and contention are design problems: lock order, critical-section size, and who shares what. You handle them with conventions and with measurement, because no type system can see them.",
+    cost: "You have to reason about how locks are used at runtime, and test under realistic load, which the compiler cannot do for you."
+  },
+  quiz: [
+    { kind: "what", prompt: "What is the classic cause of a two-lock deadlock?", choices: ["Two threads take the same two locks in opposite orders", "Using RwLock", "Too many threads"], answer: 0, why: "A consistent lock order makes that cycle impossible." },
+    { kind: "what", prompt: "Why was \"one lock\" so much slower than \"local + merge\"?", choices: ["Threads spent their time waiting for and passing the single lock", "Mutex arithmetic is slow", "The local version skipped work"], answer: 0, why: "Both did the same additions. One version waited in line for every one of them." },
+    { kind: "why", prompt: "Why doesn't Rust's type system prevent deadlocks?", choices: ["Deadlocks depend on the order things happen at runtime, not on types", "It does prevent them", "Deadlocks are undefined behaviour"], answer: 0, why: "Types describe what may be accessed. Deadlocks are about when, and in what order." }
+  ]
+},
+{
+  slug: "futures", track: "async", minutes: 10, needs: ["temper"], figure: "poll",
+  title: "What a future is",
+  summary: "A state machine that someone polls. `Pending` means \"wake me later\".",
+  blocks: [
+    { type: "p", text: "In Temper, `async fn` and `.await` just worked. Underneath, every `async fn` becomes a value that implements one trait, `Future`, with one method: `poll`." },
+    { type: "figure", id: "poll" },
+    { type: "ul", items: [
+      "`poll` returns `Poll::Ready(value)` when the work is done, or `Poll::Pending` when it must wait.",
+      "Before returning `Pending`, a future arranges to be woken: it hands the `Waker` from the context to whatever it is waiting on (a socket, a timer).",
+      "The **executor** (Tokio) polls a future, parks it on `Pending`, and polls it again once its waker fires."
+    ] },
+    { type: "code", code: CODE.b07, out: `poll: 3 left, returning Pending
+poll: 2 left, returning Pending
+poll: 1 left, returning Pending
+liftoff
+small(): 24 bytes
+big():   4120 bytes` },
+    { type: "p", text: "`Countdown` is a hand-written future that wakes itself right away, so it is polled four times. Real futures wake when the network or a timer is ready." },
+    { type: "p", text: "The sizes show the other half of the story. The compiler turns an `async fn` into a state machine, a struct holding whatever must survive across each `.await`. `big()` keeps a 4 KB buffer across its await, so the future itself is about 4 KB." },
+    { type: "callout", title: "About Pin", text: "`poll` takes `Pin<&mut Self>`. A state machine may hold references into itself, so once it has been polled it must not move in memory. `Pin` is the type that promises that. You see it when writing futures by hand, which is rare." }
+  ],
+  why: {
+    without: "Waiting for many sockets at once otherwise means a thread per socket, or callbacks that tear the code into pieces.",
+    answer: "Rust turns sequential-looking `async` code into a state machine whose size is known at compile time, and leaves the scheduling to a library. That is why async Rust needs no garbage collector and runs on embedded devices as well as servers.",
+    cost: "A future does nothing until something polls it. Large locals held across `.await` make every task that large. `Pin` appears in advanced code."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does `Poll::Pending` tell the executor?", choices: ["Not done yet; I arranged to be woken when I can continue", "An error happened", "Poll me again immediately, forever"], answer: 0, why: "Returning `Pending` without registering the waker would mean the future is never polled again." },
+    { kind: "what", prompt: "Why is `big()` about 4 KB?", choices: ["Its buffer lives across an .await, so it is stored inside the future", "Async functions always allocate 4 KB", "Tokio pads futures"], answer: 0, why: "Anything held across an await is part of the state machine." },
+    { kind: "why", prompt: "Why does Rust compile async functions into state machines instead of giving each a stack?", choices: ["The size is known at compile time, so no runtime is needed to manage growing stacks", "Stacks are not allowed in Rust", "It makes code shorter"], answer: 0, why: "Green threads (as in Go) need a runtime to manage stacks. A state machine is just a value." }
+  ]
+},
+{
+  slug: "tasks", track: "async", minutes: 9, needs: ["futures", "send-sync"],
+  title: "The runtime and tasks",
+  summary: "`tokio::spawn` hands a future to the runtime. It must be `Send` and `'static`.",
+  blocks: [
+    { type: "p", text: "A **task** is a future given to the runtime to drive on its own. Tokio's default runtime spreads tasks over a few worker threads, one per core. A task waiting on I/O costs a small heap allocation, not a thread." },
+    { type: "code", code: CODE.b08, out: "10,000 tasks, sum = 99990000, in 56 ms" },
+    { type: "p", text: "Ten thousand tasks, each waiting 50 ms, finish in about 56 ms on two cores. They all wait at the same time. Ten thousand OS threads would also work, but each would need its own stack." },
+    { type: "h", text: "Why spawn has two requirements" },
+    { type: "ul", items: [
+      "`'static`: the task may outlive the function that spawned it, so it cannot borrow that function's locals. Move owned data in with `async move`.",
+      "`Send`: a task may move between worker threads at any `.await`, so everything it holds across an await must be `Send`."
+    ] },
+    { type: "pick", prompt: "A task updates shared notes and then awaits. Which compiles?", a: `tokio::spawn(async move {
+    let mut list = notes.lock().unwrap();
+    tokio::task::yield_now().await;
+    list.push(note);
+});`, b: `tokio::spawn(async move {
+    {
+        let mut list = notes.lock().unwrap();
+        list.push(note);
+    } // guard dropped here
+    tokio::task::yield_now().await;
+});`, answer: "b", error: "error: future cannot be sent between threads safely\nnote: future is not `Send` as this value is used across an await", why: "A std `MutexGuard` is not `Send`. Held across the await, it becomes part of the task's state, so the task is not `Send`. Ending the guard's scope before the await fixes it, and also stops you from holding a lock while the task sleeps." },
+    { type: "pick", prompt: "Which compiles?", a: `let name = String::from("ada");
+tokio::spawn(async { println!("{name}") });`, b: `let name = String::from("ada");
+tokio::spawn(async move { println!("{name}") });`, answer: "b", error: "error[E0373]: async block may outlive the current function, but it borrows `name`", why: "The same rule as threads in lesson 1: a spawned task may outlive the function that created it. `async move` gives it its own copy." }
+  ],
+  why: {
+    without: "Servers spend most of their time waiting. A thread per connection makes every waiting connection cost a whole thread.",
+    answer: "Tasks are cheap futures that the runtime multiplexes over a few threads. The `Send + 'static` bounds are how the compiler keeps that sharing safe.",
+    cost: "The bounds are strict. Error messages about non-`Send` futures point at the `.await`, not at the value that caused it."
+  },
+  quiz: [
+    { kind: "what", prompt: "Why must a spawned task be `'static`?", choices: ["It may outlive the function that spawned it", "It runs forever", "It is stored in a static variable"], answer: 0, why: "The runtime owns the task. The spawning function may return first." },
+    { kind: "what", prompt: "What makes a task non-`Send`?", choices: ["Holding a non-Send value across an .await", "Using async move", "Returning a value"], answer: 0, why: "Values held across an await are stored in the future, and the future may move to another thread there." },
+    { kind: "why", prompt: "Why can 10,000 tasks wait at once on two threads?", choices: ["A waiting task is a parked state machine, not a blocked thread", "Tokio creates 10,000 threads", "They actually run one after another"], answer: 0, why: "While a task waits, it uses no thread. The runtime polls it again when its timer fires." }
+  ]
+},
+{
+  slug: "blocking", track: "async", minutes: 8, needs: ["tasks"], figure: "blocking",
+  title: "Blocking is the enemy",
+  summary: "A task that does not reach an `.await` holds its thread, and everyone on it waits.",
+  blocks: [
+    { type: "p", text: "Async works only if tasks give the thread back at each `.await`. A task that calls `std::thread::sleep`, reads a file with `std::fs`, uses a blocking database driver, or computes for a long time never does. Every other task on that worker thread waits." },
+    { type: "figure", id: "blocking" },
+    { type: "code", code: CODE.b09, out: `blocking in a task:  worst gap 211 ms
+spawn_blocking:      worst gap 51 ms`, caption: "Single-threaded runtime, to make the effect easy to see. On a multi-thread runtime the same thing happens to one worker at a time." },
+    { type: "p", text: "The ticker wants to run every 50 ms. When a task blocks the only thread for 200 ms, the ticker waits 211 ms. With `spawn_blocking`, the blocking work runs on Tokio's separate pool for blocking jobs, and the ticker keeps its rhythm." },
+    { type: "ul", items: [
+      "Waiting on time or I/O: use the async version (`tokio::time::sleep`, `tokio::fs`, async drivers).",
+      "Blocking library call or heavy computation: `tokio::task::spawn_blocking(|| ...)`.",
+      "Lots of CPU-bound work: a dedicated thread pool such as `rayon`, and send results back over a channel."
+    ] },
+    { type: "callout", tone: "warn", title: "How it shows up in production", text: "Not as an error. As latency: a few requests are slow, then unrelated requests on the same worker are slow too, and CPU use looks low. The compiler cannot see blocking calls." }
+  ],
+  why: {
+    without: "With one thread per request, a blocking call only hurts its own request. Async gives up that isolation to serve many requests per thread.",
+    answer: "Rust's async model is cooperative: tasks yield at `.await`. That keeps tasks cheap, and makes \"never block\" the rule you must follow. `spawn_blocking` is the escape hatch for work that cannot avoid blocking.",
+    cost: "You must know which calls block. Nothing in a function's type says \"this blocks\"."
+  },
+  quiz: [
+    { kind: "what", prompt: "What happened to the ticker when a task called std::thread::sleep(200 ms)?", choices: ["It was delayed about 200 ms", "Nothing", "It crashed"], answer: 0, why: "The only thread was blocked, so the ticker could not be polled." },
+    { kind: "what", prompt: "Where does `spawn_blocking` run its closure?", choices: ["On a separate pool of threads meant for blocking work", "On the same worker, but faster", "On the GPU"], answer: 0, why: "The async workers stay free to poll other tasks." },
+    { kind: "why", prompt: "Why is blocking harmful in async code specifically?", choices: ["Tasks share threads and only switch at .await, so a blocked thread stalls all its tasks", "Async code is slower", "Blocking calls are unsafe"], answer: 0, why: "Cooperative scheduling depends on every task cooperating." }
+  ]
+},
+{
+  slug: "cancellation", track: "async", minutes: 9, needs: ["tasks"],
+  title: "Timeouts and cancellation",
+  summary: "Cancelling a future is dropping it. Destructors run, and work stops at an `.await`.",
+  blocks: [
+    { type: "p", text: "In Rust, a future stops when nobody polls it any more. Dropping a future cancels it at whatever `.await` it was parked on, and its destructors run like any other drop." },
+    { type: "code", code: CODE.b10, out: `  drop: query state released
+timeout: gave up after 100 ms
+  drop: query state released
+select: the timer won` },
+    { type: "ul", items: [
+      "`timeout(duration, future)` returns `Err` if the future is not done in time, and drops it.",
+      "`select!` polls several futures and runs the branch of the first one to finish. The others are dropped.",
+      "In both cases `Cleanup` printed its drop message: the half-finished query released what it held."
+    ] },
+    { type: "callout", tone: "warn", title: "Cancellation safety", text: "A future can be dropped at any `.await`. If it had done half of a two-step update, the second half never happens. Tokio's docs mark each method as cancellation-safe or not. For example, `mpsc::Receiver::recv` is safe in `select!` (a message is never lost), while reading into a buffer may not be." },
+    { type: "callout", title: "If you know Java or TypeScript", text: "Java interrupts a thread and hopes the code checks for it. JavaScript cannot cancel a Promise at all, only ignore its result (fetch uses an `AbortController`). In Rust, cancellation is built into the model: stop polling, and drop." }
+  ],
+  why: {
+    without: "Slow dependencies make requests pile up. Without a uniform way to stop work, each library invents its own (flags, tokens, interrupts), and many simply cannot be stopped.",
+    answer: "Because a future only runs when polled, stopping is always possible and always the same: drop it. Timeouts and races compose around any async operation, and RAII cleans up what it held.",
+    cost: "Code can stop at any `.await`, so multi-step updates need care, and `Drop` cannot run async cleanup."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does `timeout` do to the inner future when time runs out?", choices: ["Drops it, which cancels it", "Lets it keep running in the background", "Panics"], answer: 0, why: "Dropping the future is the cancellation. Its destructors run." },
+    { kind: "what", prompt: "In `select!`, what happens to the branches that did not finish first?", choices: ["They are dropped", "They keep running", "They run after the winner"], answer: 0, why: "Only the winning branch's future completes. The others are cancelled by being dropped." },
+    { kind: "why", prompt: "Why does a half-done update need care in async code?", choices: ["The future can be dropped at any .await, between the two steps", "Async code reorders statements", "Drop is never called for futures"], answer: 0, why: "Cancellation happens at await points. Keep updates that must stay together free of awaits, or make them safe to repeat." }
+  ]
+},
+{
+  slug: "backpressure", track: "async", minutes: 9, needs: ["channels", "tasks"], figure: "channel",
+  title: "Bounded channels and backpressure",
+  summary: "A full queue makes the producer wait. That is the feature.",
+  blocks: [
+    { type: "p", text: "When producers are faster than consumers, something has to give. An unbounded queue gives memory: it grows until the process runs out. A **bounded** channel makes the producer wait instead. That waiting is called **backpressure**." },
+    { type: "figure", id: "channel" },
+    { type: "code", code: CODE.b11, out: `   0 ms  sent 1
+   0 ms  sent 2
+   0 ms  sent 3
+ 100 ms    handled 1
+ 100 ms  sent 4
+ 200 ms    handled 2
+ 200 ms  sent 5
+ 300 ms    handled 3
+ 400 ms    handled 4
+ 500 ms    handled 5` },
+    { type: "ul", items: [
+      "The channel holds 2 jobs. Job 1 goes straight to the consumer, so jobs 2 and 3 fit in the queue at once.",
+      "Job 4 waits: `send(...).await` does not finish until the consumer takes job 2 at 100 ms. The producer is slowed to the consumer's pace.",
+      "Nothing piles up. Memory stays bounded however fast the producer is."
+    ] },
+    { type: "callout", title: "Limiting concurrency", text: "A `tokio::sync::Semaphore` with N permits caps how many tasks do something at once, such as calls to a slow API or database. Acquire a permit before the call; it is returned when dropped." },
+    { type: "callout", title: "For servers", text: "An HTTP server faces the same choice. Accept everything and let queues grow, or cap concurrency and answer `503` early. A fast, honest refusal is usually better than slow timeouts for everyone." }
+  ],
+  why: {
+    without: "With unbounded queues, overload does not fail quickly. Memory and latency grow until the process is killed, and every queued request is late.",
+    answer: "Bounded channels and semaphores turn \"too much work\" into waiting at the source. Because waiting is just an `.await`, it costs no threads.",
+    cost: "You must choose capacities and decide what happens when they are full: wait, drop, or reject."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does `send(job).await` do on a full bounded channel?", choices: ["Waits until there is room", "Drops the job", "Grows the channel"], answer: 0, why: "That waiting is the backpressure." },
+    { kind: "what", prompt: "Why did jobs 2 and 3 both send at 0 ms with capacity 2?", choices: ["The consumer had already taken job 1 off the queue", "Capacity is a hint", "Sends never wait in the first 100 ms"], answer: 0, why: "The consumer received job 1 immediately, so two slots were free." },
+    { kind: "why", prompt: "Why prefer a bounded queue over an unbounded one?", choices: ["Overload slows the producer instead of growing memory without limit", "Bounded queues are faster", "Unbounded queues lose messages"], answer: 0, why: "A queue that cannot fill only moves the problem until memory runs out." }
+  ]
+},
+{
+  slug: "shutdown", track: "async", minutes: 8, needs: ["cancellation", "backpressure"],
+  title: "Graceful shutdown",
+  summary: "Tell everyone to stop, let them finish the current job, then exit.",
+  blocks: [
+    { type: "p", text: "Deploys stop processes. A container platform sends a signal (SIGTERM), waits a few seconds, then kills. In those seconds a service should stop taking new work, finish what it started, and release its resources." },
+    { type: "code", code: CODE.b12, out: `shutdown signal
+worker 1 stopped after 3 jobs
+worker 2 stopped after 3 jobs
+worker 3 stopped after 3 jobs
+all workers finished, exiting`, caption: "Needs tokio-util for CancellationToken: tokio-util = \"0.7\"." },
+    { type: "ul", items: [
+      "A `CancellationToken` is shared by everyone. `cancel()` once, and every `cancelled()` future completes.",
+      "Each worker `select!`s between its next job and the token, so it stops **between** jobs, never in the middle of one.",
+      "A `JoinSet` holds the spawned tasks. `join_next()` waits for each to finish, so `main` exits only after all of them have."
+    ] },
+    { type: "callout", title: "In Axum", text: "`axum::serve(listener, app).with_graceful_shutdown(signal)` stops accepting connections when `signal` completes and lets in-flight requests finish. Use the same token to stop background workers, and add an overall deadline so one stuck task cannot hold the exit forever." }
+  ],
+  why: {
+    without: "Killing a process mid-work drops in-flight requests and leaves jobs half done, on every deploy.",
+    answer: "Cancellation is dropping a future (lesson 10), so a shared token plus `select!` gives every task a clean stopping point, and `JoinSet` waits for them.",
+    cost: "Every long-running loop needs a stopping point, and you need a deadline for tasks that do not stop in time."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does `token.cancel()` do?", choices: ["Completes every token.cancelled() future, in every task that holds a clone", "Kills all tasks immediately", "Drops the runtime"], answer: 0, why: "It is a signal. Each task decides where to stop." },
+    { kind: "what", prompt: "Why do the workers stop between jobs, not mid-job?", choices: ["They only check the token in the select! that picks the next job", "Jobs cannot be cancelled", "JoinSet waits for jobs"], answer: 0, why: "The `select!` is the stopping point you chose." },
+    { kind: "why", prompt: "Why is a graceful shutdown worth the extra code?", choices: ["In-flight work finishes on every deploy instead of failing", "It makes startup faster", "The compiler requires it"], answer: 0, why: "Deploys happen often. Without it, each one breaks some requests." }
+  ]
+}
+];
+
+// Anneal — lessons 13–20
+LESSONS.push(
+{
+  slug: "layout", track: "memory", minutes: 8, needs: ["patina"],
+  title: "Size and layout",
+  summary: "Every type has a size and an alignment. The compiler arranges fields to waste less.",
+  blocks: [
+    { type: "p", text: "Speed starts with knowing how big things are. `std::mem::size_of` tells you, and the answers explain a lot." },
+    { type: "code", code: CODE.c13, out: `Loose:   size  8, align 4
+InOrder: size 12, align 4
+u64:                8
+Option<u64>:       16
+Box<u64>:           8
+Option<Box<u64>>:   8
+&str:              16
+String / Vec<u8>:  24`, caption: "64-bit machine." },
+    { type: "ul", items: [
+      "**Alignment**: a `u32` must start at an address divisible by 4. Gaps between fields to satisfy that are **padding**.",
+      "Rust's default layout may reorder fields, so `Loose` packs its two bytes together: 8 bytes. `#[repr(C)]` keeps the written order (needed for C interop), and pays 12.",
+      "`Option<u64>` needs room for \"is it there?\", so 16. `Option<Box<u64>>` stays 8: a Box is never null, so `None` is stored as the null pointer. This is the **niche** optimisation.",
+      "`&str` is a pointer plus a length (16). `String` and `Vec` add a capacity (24). The text itself is elsewhere, on the heap."
+    ] },
+    { type: "callout", title: "Why size matters", text: "Small values fit more per cache line, copy faster, and make collections smaller. Large values make every move a big `memcpy`, and a large local held across an `.await` makes the whole future large (lesson 7). Clippy's `large_enum_variant` lint flags one common case." }
+  ],
+  why: {
+    without: "In Java every object has a header and lives on the heap, and the JVM decides the layout. You cannot see or shape what a value costs in memory.",
+    answer: "Rust stores values inline and tells you their exact size. Its default layout is free to reorder fields to save space, and `repr(C)` gives a fixed order when you need one.",
+    cost: "The default layout is not guaranteed stable, so you cannot assume a field order without `repr(C)`. Sizes are something you now reason about."
+  },
+  quiz: [
+    { kind: "what", prompt: "Why is `Option<Box<u64>>` the same size as `Box<u64>`?", choices: ["A Box is never null, so None is stored as the null pointer", "Option is free for every type", "Box is zero-sized"], answer: 0, why: "The unused value (null) is the niche that encodes `None`." },
+    { kind: "what", prompt: "What does `#[repr(C)]` change?", choices: ["Fields stay in the written order, with C's padding rules", "The struct moves to the heap", "Nothing at runtime"], answer: 0, why: "The default `repr(Rust)` may reorder fields. `repr(C)` may not." },
+    { kind: "why", prompt: "Why is Rust's default layout allowed to reorder fields?", choices: ["So the compiler can reduce padding and waste less memory", "To confuse C code", "To make debugging harder"], answer: 0, why: "Leaving the order unspecified lets the compiler optimise. You opt into a fixed order when you need it." }
+  ]
+},
+{
+  slug: "allocation", track: "memory", minutes: 9, needs: ["layout"],
+  title: "What allocation costs",
+  summary: "Count the allocations, then reduce them: reserve capacity, and reuse buffers.",
+  blocks: [
+    { type: "p", text: "Each heap allocation is a call into the allocator, and often a later free. Hot code that allocates in a loop pays that on every iteration. Rust lets you count them, by wrapping the allocator itself." },
+    { type: "code", code: CODE.c14, out: `Vec::new + 1000 pushes:      9 allocations
+Vec::with_capacity(1000):    1
+format! 1000 times:          1000
+one String, cleared, reused: 1`, caption: "The unsafe blocks implement the allocator interface. Lesson 18 explains what unsafe promises." },
+    { type: "ul", items: [
+      "A growing `Vec` doubles its buffer and copies everything each time: 9 allocations for 1000 pushes. `with_capacity` asks for the right size once.",
+      "`format!` makes a new `String` every time. `clear()` keeps the buffer's capacity, so `write!` into the same `String` reuses it.",
+      "The same habits: `String::with_capacity`, `Vec::reserve`, `extend` instead of repeated push, borrowing (`&str`) instead of `.to_string()`, and `.clone()` only when you need a second owner."
+    ] },
+    { type: "callout", tone: "warn", title: "Measure first", text: "Most allocations are cheap and fine. Optimise the ones in hot loops, after a profiler shows them. A heap profiler (`heaptrack`, the `dhat` crate) counts them for a real program, like this example does for a small one." }
+  ],
+  why: {
+    without: "In a garbage-collected language, allocation is hidden and cheap at the call site. Its cost appears later as collection work and pauses, far from the code that caused it.",
+    answer: "In Rust every allocation is visible in the code (`Box::new`, `Vec`, `String`, `format!`, `clone`) and paid where it happens, so you can see it, count it, and remove it.",
+    cost: "Reuse makes code a little less tidy. `clear()` and preallocated buffers are a manual optimisation you have to maintain."
+  },
+  quiz: [
+    { kind: "what", prompt: "Why did 1000 pushes cost 9 allocations?", choices: ["The Vec grew by doubling, reallocating each time it filled up", "Each push allocates", "Vec allocates 9 times on creation"], answer: 0, why: "Capacity 4, 8, 16, … up to 1024: about nine steps." },
+    { kind: "what", prompt: "What does `String::clear()` keep?", choices: ["The allocated capacity", "The text", "Nothing"], answer: 0, why: "Length goes to zero, the buffer stays, so the next write reuses it." },
+    { kind: "why", prompt: "Why is allocation easier to control in Rust than in Java?", choices: ["Every allocation is visible in the code and paid at that point", "Rust never allocates", "Rust's allocator is always faster"], answer: 0, why: "Visibility is what lets you count and remove them." }
+  ]
+},
+{
+  slug: "locality", track: "memory", minutes: 9, needs: ["layout", "allocation"], figure: "locality",
+  title: "Cache locality",
+  summary: "Data next to data is fast. A pointer to somewhere else is a trip.",
+  blocks: [
+    { type: "p", text: "The CPU does not read memory one value at a time. It fetches 64-byte **cache lines**, and guesses which line you need next. Reading data in order is what it is best at. Following pointers to scattered places is what it is worst at." },
+    { type: "figure", id: "locality" },
+    { type: "code", code: CODE.c15, out: `Vec<Point>:        3.7 ms (sum 2000001000000)
+Vec<Box<Point>>:  11.9 ms (sum 2000001000000)`, caption: "Release build, 2-core machine, second of two rounds. Three runs gave 3.7–4.8 ms against 11.9–13.9 ms." },
+    { type: "ul", items: [
+      "`Vec<Point>`: two million points side by side. Each cache line holds four of them, and the next line is already on its way.",
+      "`Vec<Box<Point>>`: two million pointers to two million separate allocations, in shuffled order. Almost every point is a fresh cache miss.",
+      "Same answer, about 3× slower. With a linked list, where each load depends on the previous one, the gap is much larger."
+    ] },
+    { type: "callout", title: "If you know Java", text: "`ArrayList<Point>` is the `Vec<Box<Point>>` case: an array of references to separate objects. Rust gives you the flat version by default, because `Vec<T>` stores the values themselves." }
+  ],
+  why: {
+    without: "When every object is a separate allocation behind a reference, the layout of your data is decided by the allocator, and loops spend their time waiting for memory.",
+    answer: "Rust stores values inline, in the collection itself, unless you ask for indirection. The simple choice, `Vec<T>`, is the cache-friendly one.",
+    cost: "Big elements make moves and growth more expensive. Heterogeneous collections (`Vec<Box<dyn Trait>>`) still need pointers."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does the CPU fetch from memory at a time?", choices: ["A cache line, commonly 64 bytes", "One byte", "One whole page of the program"], answer: 0, why: "Neighbouring data comes along for free, which is why order matters." },
+    { kind: "what", prompt: "Which layout did the slow loop use?", choices: ["A Vec of pointers to separate, shuffled allocations", "A Vec of values side by side", "A HashMap"], answer: 0, why: "Each element meant following a pointer to a new place in memory." },
+    { kind: "why", prompt: "Why is `Vec<T>` cache-friendly by default in Rust?", choices: ["It stores the values themselves contiguously, not references to them", "Rust disables the cache", "Vec uses a special allocator"], answer: 0, why: "No hidden boxing: the elements are the data." }
+  ]
+},
+{
+  slug: "dispatch", track: "memory", minutes: 8, needs: ["layout"],
+  title: "Generics or dyn",
+  summary: "One copy per type and a direct call, or one copy and a lookup.",
+  blocks: [
+    { type: "p", text: "Patina showed traits and generics. There are two ways to call a trait method, with different costs." },
+    { type: "code", code: CODE.c16, out: `generic, squares only: 5
+dyn, mixed:            4.14
+&Square:     8 bytes
+&dyn Shape:  16 bytes (data pointer + vtable pointer)` },
+    { type: "ul", items: [
+      "**Generics** (`T: Shape`): the compiler makes a copy of the function for each type used. Calls are direct and can be inlined. The cost is compile time and binary size.",
+      "**Trait objects** (`dyn Shape`): one copy of the function. Each value carries a pointer to a **vtable**, a table of its methods, and each call looks the method up there. That is why `&dyn Shape` is 16 bytes.",
+      "Only `dyn` can hold **different** types in one collection, like the `mixed` list."
+    ] },
+    { type: "callout", title: "Choosing", text: "Default to generics. Use `dyn` for collections of different types, plugins chosen at runtime, or to cut compile time where a generic is instantiated many times. The lookup itself costs little; what you lose is inlining in tight loops. If it matters, measure it." }
+  ],
+  why: {
+    without: "In Java, interface calls are dynamic by default and the JIT tries to make them direct at runtime. You cannot choose, and you cannot see which calls were optimised.",
+    answer: "Rust makes the choice explicit at each use: generics for zero-overhead static calls, `dyn` when you truly need runtime flexibility.",
+    cost: "Generics multiply code. `dyn` loses inlining and needs a pointer. Some traits cannot be used as `dyn` at all (for example, those with generic methods)."
+  },
+  quiz: [
+    { kind: "what", prompt: "Why is `&dyn Shape` twice the size of `&Square`?", choices: ["It carries a pointer to the data and a pointer to the vtable", "dyn copies the value", "It stores the type name"], answer: 0, why: "The vtable pointer is how the call finds the right method at runtime." },
+    { kind: "what", prompt: "Which can store a Square and a Circle in the same Vec?", choices: ["Vec<Box<dyn Shape>>", "Vec<T> where T: Shape", "Neither"], answer: 0, why: "A generic `Vec<T>` holds one concrete type." },
+    { kind: "why", prompt: "What do generics trade for their speed?", choices: ["Compile time and binary size, from one copy per type", "Memory safety", "Nothing"], answer: 0, why: "Monomorphisation makes direct calls possible by generating code for each type." }
+  ]
+},
+{
+  slug: "measuring", track: "memory", minutes: 8, needs: ["locality", "dispatch"],
+  title: "Measuring honestly",
+  summary: "Release builds, `black_box`, repeated runs, then a profiler.",
+  blocks: [
+    { type: "p", text: "Performance intuitions are often wrong, especially with an optimising compiler. Every claim in this course came from a measurement. These are the rules those measurements followed." },
+    { type: "code", code: CODE.c17, out: `cargo run            →  result 99999998 in 821 ms
+cargo run --release  →  result 99999998 in 56 ms` },
+    { type: "ul", items: [
+      "**Always use `--release`.** The debug build here is 15× slower. Never compare a debug Rust build with anything.",
+      "**`black_box`** hides a value from the optimizer. Without it, the compiler may compute a constant result at compile time, or delete unused work, and you measure nothing.",
+      "**Repeat and warm up.** Run more than once; the first run pays for cold caches. Report a range, not your best number.",
+      "**Benchmark crates** do this properly: `criterion` or `divan` run the code many times and report statistics."
+    ] },
+    { type: "code", lang: "plain", file: "terminal", code: `cargo bench                         # criterion / divan benchmarks in benches/
+cargo install flamegraph
+cargo flamegraph --bin server       # where time goes, as a picture (needs perf on Linux)
+[profile.release]
+debug = 1                           # keep symbols so profiles show function names` },
+    { type: "callout", title: "A flamegraph in one sentence", text: "Each bar is a function, its width is how much time was spent in it and everything it called, and the wide bars at the top are where to look first." }
+  ],
+  why: {
+    without: "Without measuring, optimisation is guessing. You speed up code that was not slow, and make it harder to read.",
+    answer: "Rust's tooling makes measuring routine: release profiles, `black_box` in std, benchmark crates, and native profilers that understand Rust symbols.",
+    cost: "Measuring takes time, and good benchmarks take care to write. That is cheaper than optimising the wrong thing."
+  },
+  quiz: [
+    { kind: "what", prompt: "What does `std::hint::black_box` prevent?", choices: ["The optimizer precomputing or deleting the work you meant to time", "Panics", "Allocations"], answer: 0, why: "It makes a value opaque to the optimizer, so the work must really happen." },
+    { kind: "what", prompt: "In a flamegraph, what does a bar's width show?", choices: ["How much time was spent in that function and what it called", "When it ran", "How many lines it has"], answer: 0, why: "Width is time. The x-axis is not a timeline." },
+    { kind: "why", prompt: "Why must timings use release builds?", choices: ["Debug builds skip optimisations and can be many times slower", "Release builds are easier to read", "Debug builds cannot be timed"], answer: 0, why: "A debug timing tells you about the debug build, not about the program you ship." }
+  ]
+},
+{
+  slug: "unsafe", track: "edges", minutes: 9, needs: ["layout"],
+  title: "unsafe and its promises",
+  summary: "`unsafe` does not turn checks off. It marks code where you prove what the compiler cannot.",
+  blocks: [
+    { type: "p", text: "Some correct code cannot be checked by the compiler: talking to C, writing an allocator, building a data structure from raw pointers. An `unsafe` block allows five extra operations there, the main ones being dereferencing raw pointers and calling `unsafe` functions. Everything else, including the borrow checker, still applies." },
+    { type: "code", code: CODE.d18, out: `[10, 2, 3, 40, 5, 6]
+[10, 7, 3, 40, 5, 6]` },
+    { type: "ul", items: [
+      "The borrow checker cannot see that the two halves do not overlap, so it would refuse two `&mut` borrows of `v`. Raw pointers let us say it ourselves.",
+      "The `// SAFETY:` comment states the promise: the ranges do not overlap, and both stay inside `v`. Reviewers check that promise, not the whole program.",
+      "The function itself is **safe** to call. No caller can misuse it. That is the goal of `unsafe`: small blocks wrapped in safe APIs. `split_at_mut` in std is exactly this."
+    ] },
+    { type: "callout", tone: "warn", title: "Undefined behaviour", text: "If an unsafe promise is false, the result is **undefined behaviour**: the compiler's assumptions break, and the program may do anything, including appear to work. Run tests under **Miri** (`cargo +nightly miri test`) to catch many of these mistakes." },
+    { type: "callout", title: "Not unsafe", text: "Leaks, panics, deadlocks, and integer overflow are not undefined behaviour. Safe Rust can do all of them. `unsafe` is only about the rules that keep memory valid." }
+  ],
+  why: {
+    without: "A language with no escape hatch cannot write its own collections, allocators, or bindings to C, so those parts would live in another language entirely.",
+    answer: "Rust keeps those parts in Rust, but fenced: `unsafe` marks exactly where a human must prove correctness, and safe wrappers keep the rest of the program checked.",
+    cost: "Safety now depends on those promises being true for every possible caller. Writing and reviewing unsafe code takes real care."
+  },
+  quiz: [
+    { kind: "what", prompt: "Does an unsafe block turn off the borrow checker?", choices: ["No; it only allows a few extra operations, like dereferencing raw pointers", "Yes, completely", "Only for references"], answer: 0, why: "References inside unsafe code are still checked. Raw pointers are what is unchecked." },
+    { kind: "what", prompt: "What is a `// SAFETY:` comment for?", choices: ["To state the promise that makes the unsafe code correct", "The compiler reads it", "To silence warnings"], answer: 0, why: "It turns a review of the whole program into a review of one stated claim." },
+    { kind: "why", prompt: "Why wrap unsafe code in a safe function?", choices: ["So no caller can break the promise, and the rest of the program stays checked", "Safe functions run faster", "unsafe cannot be called from main"], answer: 0, why: "The proof is done once, inside. Callers get an ordinary safe API." }
+  ]
+},
+{
+  slug: "ffi", track: "edges", minutes: 7, needs: ["unsafe"],
+  title: "Calling C",
+  summary: "Declare the function, say whether calling it is safe, and wrap the pointers.",
+  blocks: [
+    { type: "p", text: "Rust has no runtime to embed, so calling C is a direct function call. Python and Node extensions written in Rust, and Rust inside existing C or C++ programs, all use this." },
+    { type: "code", code: CODE.d19, out: `abs(-42) = 42
+strlen("anneal") = 6`, caption: "Edition 2024 syntax: extern blocks are written unsafe extern, and items inside may be marked safe." },
+    { type: "ul", items: [
+      "The compiler cannot check C code, so the whole `extern` block is `unsafe`: you promise these declarations match the real C functions.",
+      "`safe fn abs` says calling it is always fine (it takes a plain number). `strlen` stays unsafe because it reads through a raw pointer.",
+      "`CString` adds the NUL byte C expects. The safe `c_len` wrapper means callers only ever pass a Rust `&str`."
+    ] },
+    { type: "callout", title: "Tools", text: "`bindgen` generates Rust declarations from C headers. `cbindgen` goes the other way. `PyO3` and `napi-rs` build Python and Node modules in Rust. All of them follow this pattern: unsafe declarations at the edge, safe wrappers inside." }
+  ],
+  why: {
+    without: "Rewriting a whole system in a new language at once is rarely possible. A language that cannot call, and be called by, existing C code has to be adopted all or nothing.",
+    answer: "Rust uses C's calling convention directly, so it can replace one piece of a system at a time. The `unsafe` boundary marks exactly where its guarantees end.",
+    cost: "Everything across the boundary is your responsibility: types, pointer validity, string formats, who frees what, and threading rules."
+  },
+  quiz: [
+    { kind: "what", prompt: "Why is calling `strlen` unsafe but `abs` marked safe?", choices: ["strlen reads through a raw pointer; abs takes a plain number", "abs is written in Rust", "strlen is slower"], answer: 0, why: "A bad pointer makes strlen read invalid memory. No input can make abs do that." },
+    { kind: "what", prompt: "What does `CString::new` add?", choices: ["The NUL byte that ends a C string", "A length prefix", "UTF-16 encoding"], answer: 0, why: "C finds the end of a string by its NUL byte; Rust strings store a length instead." },
+    { kind: "why", prompt: "Why does it matter that Rust can call C with no runtime in between?", choices: ["Rust can replace one part of an existing system at a time", "C is faster than Rust", "It removes the need for unsafe"], answer: 0, why: "Incremental adoption is how Rust gets into existing codebases." }
+  ]
+},
+{
+  slug: "under-load", track: "load", minutes: 14, needs: ["temper", "contention", "tasks", "measuring"],
+  title: "Temper's notes, under load",
+  summary: "Measure the service, find the lock, change one idea, measure again.",
+  blocks: [
+    { type: "p", text: "The capstone takes Temper's notes service as it is, seeded with 2,000 notes, and puts it under load. Same routes, same JSON. The only question is what happens when many clients list the notes at once." },
+    { type: "h", text: "1. Measure the original" },
+    { type: "code", file: "src/main.rs (before)", code: CODE.before_list, caption: "From Temper: the list is Arc<Mutex<Vec<Note>>>, and listing clones it under the lock." },
+    { type: "p", text: "A small load generator (32 keep-alive connections, 100 `GET /notes` each, in the same Cargo project) produced:" },
+    { type: "code", lang: "plain", file: "load test, before", code: `2716 req/s, p50 11.5 ms, p99 19.2 ms
+2636 req/s, p50 12.3 ms, p99 19.1 ms
+2623 req/s, p50 12.0 ms, p99 20.1 ms` },
+    { type: "h", text: "2. Find where the time goes" },
+    { type: "p", text: "Every request clones 2,000 notes (2,000 `String` pairs) **while holding the lock**, and only one request can hold it. Timing that clone on its own:" },
+    { type: "code", lang: "plain", file: "micro-benchmark, release", code: `Vec clone: 131.4 µs    ← per request, with the lock held
+Arc clone:   0.019 µs` },
+    { type: "p", text: "At about 2,650 requests a second, that is around 350 ms of every second spent inside the lock, plus all the allocation work. Lessons 6 and 14 in one place: contention, and allocations in a hot path." },
+    { type: "h", text: "3. Change one idea" },
+    { type: "p", text: "Readers do not need their own copy. They need a list that will not change under them. So keep the list as an immutable **snapshot** behind an `Arc`, and replace the snapshot when a note is added." },
+    { type: "code", file: "src/main.rs (after)", code: CODE.after_list },
+    { type: "ul", items: [
+      "`list_notes` clones the `Arc`, a counter bump, and releases the read lock at once. Serialising 2,000 notes happens outside any lock, and many readers do it in parallel.",
+      "`Arc::make_mut` is **copy-on-write**: if no reader holds the old snapshot, it changes the Vec in place; if one does, it copies the Vec first, and the reader keeps its unchanged copy.",
+      "`Json(Arc<Vec<Note>>)` works because serde's `rc` feature implements `Serialize` for `Arc`."
+    ] },
+    { type: "h", text: "4. Measure again" },
+    { type: "code", lang: "plain", file: "load test, after", code: `3981 req/s, p50 7.9 ms, p99 14.5 ms
+3999 req/s, p50 7.8 ms, p99 15.2 ms
+4140 req/s, p50 7.5 ms, p99 13.5 ms`, caption: "Release builds; server and load generator shared the same 2-core machine, which caps both numbers." },
+    { type: "p", text: "About 1.5× the throughput and a third less latency, from removing a copy and shortening a critical section. Every response is the same JSON as before." },
+    { type: "callout", tone: "warn", title: "The trade-off", text: "Writes got more expensive. While readers hold the old snapshot, adding a note copies all 2,000. For a read-mostly list, that is the right trade. For a write-heavy one it is not, and a database is the real next step. Measure your own mix." },
+    { type: "callout", title: "What you used", text: "Shared ownership and locks (3), contention (6), tasks and Send (8), allocation (14), measuring (17), and Temper's handlers, unchanged in shape. That is the course: the same program, understood one layer further down." },
+    { type: "links", items: [
+      { label: "Temper", href: "https://temper-axum.netlify.app", note: "Where this notes service comes from." },
+      { label: "Tokio tutorial", href: "https://tokio.rs/tokio/tutorial", note: "Tasks, channels, select, and shared state, from the source." },
+      { label: "Rust Atomics and Locks", href: "https://marabos.nl/atomics/", note: "Mara Bos's book, free online. Threads and atomics in depth." },
+      { label: "The Rust Performance Book", href: "https://nnethercote.github.io/perf-book/", note: "Measuring, allocation, layout, and build settings." }
+    ] }
+  ],
+  why: {
+    without: "Without measuring, the instinct is to add threads, switch frameworks, or rewrite. None of those touch the real cost here: a big copy inside a lock.",
+    answer: "Rust shows you the costs in the code: the `.clone()`, the lock guard's scope, the `Arc`. So a profile can lead to a small, local, safe change, and the compiler checks that the new sharing is still thread-safe.",
+    cost: "Copy-on-write snapshots make writes pricier and add a type layer. The right design depends on your read/write mix, which only measurement tells you."
+  },
+  quiz: [
+    { kind: "what", prompt: "What was the main cost in the original list handler?", choices: ["Cloning 2,000 notes while holding the only lock", "Serialising JSON", "Opening connections"], answer: 0, why: "About 130 µs per request inside a lock that only one request can hold." },
+    { kind: "what", prompt: "What does `Arc::make_mut` do when a reader still holds the old snapshot?", choices: ["Copies the Vec, so the reader keeps an unchanged one", "Waits for the reader", "Panics"], answer: 0, why: "That is copy-on-write: writers pay, readers never see a change mid-read." },
+    { kind: "why", prompt: "Why is the snapshot design right for this service but not for every one?", choices: ["Reads got cheap and writes got pricier; it suits a read-mostly workload", "It is always faster", "It removes the need for locks entirely"], answer: 0, why: "Every design trades something. Measurement of the real read/write mix decides." }
+  ]
+}
+);
+
+LESSONS.forEach((l, i) => { l.number = i + 1; });
+
+const GLOSSARY = [
+  { name: "Arc", body: "Atomically reference-counted pointer: shared ownership across threads. The last owner frees the value. Gives read access only.", lesson: "locks" },
+  { name: "Atomic", body: "A type such as `AtomicU64` whose operations the CPU performs as one indivisible step, shared without a lock.", lesson: "atomics" },
+  { name: "Backpressure", body: "Making a fast producer wait when a consumer falls behind, usually with a bounded channel, instead of letting a queue grow without limit.", lesson: "backpressure" },
+  { name: "Cache line", body: "The block of memory (commonly 64 bytes) the CPU fetches at once. Data side by side shares lines; scattered data does not.", lesson: "locality" },
+  { name: "CancellationToken", body: "From tokio-util. A shared signal: `cancel()` once, and every `cancelled()` future completes.", lesson: "shutdown" },
+  { name: "Cancellation", body: "Stopping async work by dropping its future. It stops at the `.await` it was parked on, and destructors run.", lesson: "cancellation" },
+  { name: "Contention", body: "Many threads wanting the same lock at once, so most of them wait. Correct, but slow.", lesson: "contention" },
+  { name: "Copy-on-write", body: "Share one value until someone changes it; then copy it first. `Arc::make_mut` does this.", lesson: "under-load" },
+  { name: "Data race", body: "Two threads accessing the same memory at once, at least one writing, with no synchronisation. Impossible in safe Rust.", lesson: "send-sync" },
+  { name: "Deadlock", body: "Threads waiting for each other's locks forever. Not prevented by the compiler; avoided by a consistent lock order.", lesson: "contention" },
+  { name: "Executor", body: "The part of an async runtime that polls futures, parks them on `Pending`, and polls them again when woken.", lesson: "futures" },
+  { name: "FFI", body: "Foreign function interface: calling code written in another language, usually C, through `extern` declarations.", lesson: "ffi" },
+  { name: "Future", body: "A value implementing `Future`: a state machine that is polled until it returns `Ready`. Does nothing until polled.", lesson: "futures" },
+  { name: "JoinHandle", body: "Returned by `thread::spawn` or `tokio::spawn`. Waiting on it gives the result of the thread or task.", lesson: "threads" },
+  { name: "JoinSet", body: "A Tokio collection of spawned tasks. `join_next()` waits for them one at a time.", lesson: "shutdown" },
+  { name: "Monomorphisation", body: "Compiling a separate copy of generic code for each concrete type, so calls are direct.", lesson: "dispatch" },
+  { name: "Mutex", body: "Lets one holder at a time reach the data inside. `lock()` returns a guard; dropping the guard unlocks.", lesson: "locks" },
+  { name: "Niche", body: "An impossible value of a type (such as a null Box) that Rust reuses to store an enum's tag, so `Option<Box<T>>` costs nothing extra.", lesson: "layout" },
+  { name: "Padding", body: "Unused bytes the compiler inserts so each field starts at an address its alignment allows.", lesson: "layout" },
+  { name: "Pin", body: "A type promising that a value will not move in memory. Futures need it because they may point into themselves.", lesson: "futures" },
+  { name: "Poisoning", body: "A std lock is marked poisoned when a thread panics while holding it; later `lock()` calls return `Err`.", lesson: "locks" },
+  { name: "Race condition", body: "Logic whose result depends on timing, such as a separate load and store. Safe Rust allows these.", lesson: "atomics" },
+  { name: "RwLock", body: "A lock that allows many readers or one writer at a time.", lesson: "locks" },
+  { name: "Scoped thread", body: "A thread started in `thread::scope`. It is guaranteed to finish before the scope ends, so it may borrow local data.", lesson: "threads" },
+  { name: "select!", body: "Tokio macro that waits on several futures and runs the branch of the first to finish. The others are dropped.", lesson: "cancellation" },
+  { name: "Send", body: "Marker trait: a value of this type may move to another thread.", lesson: "send-sync" },
+  { name: "spawn_blocking", body: "Runs a blocking closure on Tokio's separate pool, so async worker threads stay free.", lesson: "blocking" },
+  { name: "Sync", body: "Marker trait: `&T` may be shared between threads. `T: Sync` exactly when `&T: Send`.", lesson: "send-sync" },
+  { name: "Task", body: "A future handed to the runtime with `tokio::spawn`, driven independently. Must be `Send + 'static` on the multi-thread runtime.", lesson: "tasks" },
+  { name: "Undefined behaviour", body: "An operation the language gives no meaning to, such as a dangling read or a data race. Only possible through `unsafe`.", lesson: "unsafe" },
+  { name: "unsafe", body: "Marks code where you uphold rules the compiler cannot check, such as dereferencing raw pointers or calling C.", lesson: "unsafe" },
+  { name: "vtable", body: "A table of method pointers carried by a trait object, used to find the right method at runtime.", lesson: "dispatch" },
+  { name: "Waker", body: "The handle a pending future gives to whatever it waits on, which calls `wake()` when the future can continue.", lesson: "futures" }
+];
+
+const SHEET = [
+  { title: "Threads", rows: [
+    ["thread::spawn(move || ...)", "A new OS thread. Owns what it uses."],
+    ["handle.join().unwrap()", "Wait; get the return value."],
+    ["thread::scope(|s| s.spawn(...))", "Threads that may borrow; all finish before the scope ends."],
+    ["T: Send / T: Sync", "May move to / be shared between threads."]
+  ] },
+  { title: "Locks and atomics", rows: [
+    ["Arc::new(Mutex::new(v))", "Shared, one holder at a time."],
+    ["Arc<RwLock<T>>", "Many readers or one writer."],
+    ["let g = m.lock().unwrap();", "Guard; unlocks on drop."],
+    ["AtomicU64::fetch_add(1, Relaxed)", "Lock-free counter. One indivisible step."],
+    ["load(); store(n + 1)", "Two steps: loses updates."]
+  ] },
+  { title: "Channels", rows: [
+    ["mpsc::channel()", "std, unbounded. tx.clone() for more senders."],
+    ["tokio::sync::mpsc::channel(n)", "Bounded. send().await waits when full."],
+    ["for msg in rx", "Ends when every sender is dropped."],
+    ["Semaphore::new(n)", "At most n at once. Permit returned on drop."]
+  ] },
+  { title: "Tasks", rows: [
+    ["tokio::spawn(async move { ... })", "A task. Needs Send + 'static."],
+    ["tokio::join!(a, b)", "Both concurrently, in this task."],
+    ["spawn_blocking(|| ...)", "Blocking work, off the async workers."],
+    ["guard across .await", "Makes the future non-Send. Drop it first."]
+  ] },
+  { title: "Stopping work", rows: [
+    ["timeout(d, fut).await", "Err after d; the future is dropped."],
+    ["select! { a = f => .., _ = g => .. }", "First to finish wins; the rest are dropped."],
+    ["CancellationToken", "cancel() once; every cancelled() completes."],
+    ["JoinSet::join_next()", "Wait for spawned tasks one by one."],
+    ["serve(..).with_graceful_shutdown(sig)", "Axum: stop accepting, finish in-flight."]
+  ] },
+  { title: "Memory", rows: [
+    ["size_of::<T>()", "Bytes, inline. Heap data not included."],
+    ["#[repr(C)]", "Fixed field order, C padding."],
+    ["Vec::with_capacity(n)", "One allocation instead of many."],
+    ["s.clear()", "Keep the buffer; reuse it."],
+    ["Vec<T> vs Vec<Box<T>>", "Side by side vs scattered."],
+    ["T: Trait vs dyn Trait", "Direct call vs vtable lookup."]
+  ] },
+  { title: "Measuring", rows: [
+    ["cargo run --release", "The only build worth timing."],
+    ["std::hint::black_box(x)", "Hide x from the optimizer."],
+    ["cargo bench", "criterion / divan benchmarks."],
+    ["cargo flamegraph", "Where the time goes."]
+  ] },
+  { title: "The edges", rows: [
+    ["unsafe { ... }", "Raw pointers, unsafe fns. Borrow checker still on."],
+    ["// SAFETY: ...", "The promise that makes it correct."],
+    ["unsafe extern \"C\" { safe fn abs(..); }", "Edition 2024 C declarations."],
+    ["CString::new(s)", "Adds the NUL byte C expects."]
+  ] }
+];
+
+const ERRORS = [
+  { code: "E0373", title: "A thread borrows a local", message: "error[E0373]: closure may outlive the current function, but it borrows `v`, which is owned by the current function", meaning: "A plain spawned thread may keep running after the function returns and drops its locals.", fix: "Add `move` so the thread owns what it uses, or use `thread::scope` if you need to borrow.", broken: "let v = vec![1];\nthread::spawn(|| println!(\"{v:?}\"));", fixed: "let v = vec![1];\nthread::spawn(move || println!(\"{v:?}\"));", lesson: "threads", pre: "use std::thread;" },
+  { code: "E0277", title: "A type that cannot cross threads", message: "error[E0277]: `Rc<i32>` cannot be sent between threads safely", meaning: "Something moved into a thread or task is not `Send`. The error lists which field is the problem.", fix: "Use the thread-safe version: `Arc` for `Rc`, `Mutex` or `RwLock` for `RefCell`.", broken: "let n = Rc::new(5);\nthread::spawn(move || println!(\"{n}\"));", fixed: "let n = Arc::new(5);\nthread::spawn(move || println!(\"{n}\"));", lesson: "send-sync", pre: "use std::rc::Rc; use std::sync::Arc; use std::thread;" },
+  { code: "Send", title: "A future that is not Send", message: "error: future cannot be sent between threads safely\nnote: future is not `Send` as this value is used across an await", meaning: "A non-`Send` value, very often a std `MutexGuard`, is still alive at an `.await` inside a spawned task.", fix: "End the guard's scope (a block, or `drop(guard)`) before the `.await`. If you truly must hold a lock across an await, use `tokio::sync::Mutex`.", broken: "let mut list = notes.lock().unwrap();\ntokio::task::yield_now().await;\nlist.push(1);", fixed: "{\n    let mut list = notes.lock().unwrap();\n    list.push(1);\n}\ntokio::task::yield_now().await;", lesson: "tasks", tokio: true },
+  { code: "E0373", title: "A task borrows a local", message: "error[E0373]: async block may outlive the current function, but it borrows `name`, which is owned by the current function", meaning: "`tokio::spawn` requires `'static`: the task may outlive the function that started it.", fix: "`async move`, so the task owns its data. Clone an `Arc` first if several tasks need it.", broken: "let name = String::from(\"ada\");\ntokio::spawn(async { println!(\"{name}\") });", fixed: "let name = String::from(\"ada\");\ntokio::spawn(async move { println!(\"{name}\") });", lesson: "tasks", tokio: true },
+  { code: "E0499", title: "Two mutable views of one slice", message: "error[E0499]: cannot borrow `v` as mutable more than once at a time", meaning: "The compiler cannot see that two `&mut` ranges of the same slice do not overlap.", fix: "Use `split_at_mut`, which proves it once, with unsafe code inside a safe function.", broken: "let a = &mut v[..3];\nlet b = &mut v[3..];\na[0] += b[0];", fixed: "let (a, b) = v.split_at_mut(3);\na[0] += b[0];", lesson: "unsafe", pre: "let mut v = [1, 2, 3, 4, 5, 6];" }
+];
+
+</script>
+<script>
+(function () {
+"use strict";
+const $ = (s, el) => (el || document).querySelector(s);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rich = s => esc(s).replace(/`([^`]+)`/g, '<code class="i">$1</code>').replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+const pad = n => String(n).padStart(2, "0");
+const BY = {}; LESSONS.forEach(l => { BY[l.slug] = l; l.next = []; });
+LESSONS.forEach(l => l.needs.forEach(n => { if (BY[n]) BY[n].next.push(l.slug); }));
+const TR = {}; TRACKS.forEach(t => { TR[t.id] = t; });
+const TOTAL_MIN = LESSONS.reduce((a, l) => a + l.minutes, 0);
+const REDUCED = window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// ---------- syntax highlighting
+const CLS = [null, "c", "s", "s", "l", "c", "n", "m", "k", "y"];
+function hl(code, lang) {
+  if (lang === "plain") return esc(code).replace(/(#[^\n]*|←[^\n]*)/g, '<span class="c">$1</span>');
+  const rx = /(\/\/[^\n]*)|("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])')|('[a-z_]\w*)|(#!?\[[^\]\n]*\])|(\b\d[\d_]*(?:\.\d+)?(?:u8|u16|u32|u64|i32|i64|usize|f64)?\b)|(\b[a-z_]\w*!)|(\b(?:as|async|await|const|dyn|else|enum|extern|false|fn|for|if|impl|in|let|loop|match|mod|move|mut|pub|return|safe|self|Self|static|struct|trait|true|type|unsafe|use|where|while)\b)|(\b[A-Z][A-Za-z0-9_]*\b)/g;
+  let out = "", last = 0, m;
+  while ((m = rx.exec(code))) {
+    out += esc(code.slice(last, m.index));
+    let k = 1; while (!m[k]) k++;
+    out += '<span class="' + CLS[k] + '">' + esc(m[0]) + "</span>";
+    last = rx.lastIndex;
+  }
+  return out + esc(code.slice(last));
+}
+
+// ---------- progress: this browser, plus your claude.ai account when available
+const KEY = "anneal.v1";
+let P = { answers: {}, done: [], last: null, updatedAt: 0 };
+let local = true;
+try { const raw = localStorage.getItem(KEY); if (raw) P = Object.assign(P, JSON.parse(raw)); } catch (e) { local = false; }
+let remote = null, pushT = null;
+function save() {
+  P.updatedAt = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { local = false; }
+  if (remote) { clearTimeout(pushT); pushT = setTimeout(() => remote.set(JSON.parse(JSON.stringify(P))).catch(() => { remote = null; }), 700); }
+}
+async function connect() {
+  try {
+    if (!window.claude || typeof window.claude.use !== "function") return;
+    const [user, db] = await Promise.all([window.claude.use("user").catch(() => null), window.claude.use("db").catch(() => null)]);
+    if (!user || !db) return;
+    const id = await user.id(); if (!id) return;
+    const ref = db.doc("data/users/" + id + "/anneal");
+    const snap = await ref.get();
+    const r = snap.exists ? snap.data() : null;
+    remote = ref;
+    if (r && (r.updatedAt || 0) > (P.updatedAt || 0)) {
+      P = { answers: r.answers || {}, done: Array.isArray(r.done) ? r.done.filter(s => BY[s]) : [], last: r.last || null, updatedAt: r.updatedAt };
+      try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { }
+      render(true);
+    } else if ((P.updatedAt || 0) > ((r && r.updatedAt) || 0)) save();
+  } catch (e) { remote = null; }
+}
+const isDone = s => P.done.includes(s);
+const reached = s => OUTSIDE[s] ? true : isDone(s); // outside courses count as already learned
+const isReady = l => l.needs.every(reached);
+const doneCount = () => LESSONS.filter(l => isDone(l.slug)).length;
+const qid = (l, i) => l.slug + ":" + i;
+function kindCounts() {
+  const c = { what: [0, 0], why: [0, 0] };
+  LESSONS.forEach(l => l.quiz.forEach((q, i) => { c[q.kind][1]++; if (P.answers[qid(l, i)] === q.answer) c[q.kind][0]++; }));
+  return c;
+}
+function resume() {
+  if (P.last && BY[P.last] && !isDone(P.last)) return BY[P.last];
+  return LESSONS.find(l => !isDone(l.slug) && isReady(l)) || LESSONS.find(l => !isDone(l.slug)) || null;
+}
+function toast(msg) { const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role", "status"); t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 2200); }
+const nodeTitle = s => OUTSIDE[s] ? OUTSIDE[s].title : BY[s].title;
+
+// ---------- the topic map
+const MAP_W = 1200, MAP_H = 800;
+const POS = {
+  patina: [70, 250], temper: [70, 500],
+  threads: [210, 130], "send-sync": [350, 130], locks: [490, 90], channels: [490, 190], atomics: [635, 62], contention: [780, 135],
+  futures: [210, 370], tasks: [350, 370], blocking: [490, 295], cancellation: [490, 430], backpressure: [640, 320], shutdown: [790, 410],
+  layout: [210, 620], allocation: [350, 565], dispatch: [350, 670], locality: [500, 600], measuring: [650, 620],
+  unsafe: [850, 725], ffi: [990, 725],
+  "under-load": [1110, 470]
+};
+const LABEL = {
+  threads: "Threads", "send-sync": "Send & Sync", locks: "Arc · Mutex", channels: "Channels", atomics: "Atomics", contention: "Contention",
+  futures: "Futures", tasks: "Tasks", blocking: "Blocking", cancellation: "Cancellation", backpressure: "Backpressure", shutdown: "Shutdown",
+  layout: "Layout", allocation: "Allocation", dispatch: "Generics · dyn", locality: "Locality", measuring: "Measuring",
+  unsafe: "unsafe", ffi: "Calling C", "under-load": "Under load"
+};
+const ROUTE = { "layout>unsafe": [[210, 636], [210, 770], [560, 770], [834, 725]], "temper>under-load": [[122, 500], [650, 500], [1110, 505], [1110, 486]] };
+const R_NODE = 16, OUT_W = 104, OUT_H = 46;
+function edgePath(a, b) {
+  const key = a + ">" + b;
+  if (ROUTE[key]) { const p = ROUTE[key]; return "M" + p[0] + " C" + p[1] + " " + p[2] + " " + p[3]; }
+  const [sx, sy] = POS[a], [tx, ty] = POS[b];
+  const out = !!OUTSIDE[a];
+  const x1 = out ? sx + OUT_W / 2 : sx + R_NODE, x2 = tx - R_NODE;
+  if (tx - sx < 60) { // stacked: go down
+    const y1 = sy + R_NODE + 26, y2 = ty - R_NODE, my = (y1 + y2) / 2; // start below the label
+    return "M" + sx + "," + y1 + " C" + sx + "," + my + " " + tx + "," + my + " " + tx + "," + y2;
+  }
+  const mx = (x1 + x2) / 2;
+  return "M" + x1 + "," + sy + " C" + mx + "," + sy + " " + mx + "," + ty + " " + x2 + "," + ty;
+}
+function edges() {
+  const list = [];
+  LESSONS.forEach(l => l.needs.forEach(n => list.push({ a: n, b: l.slug, cross: !!OUTSIDE[n] || (BY[n] && BY[n].track !== l.track) })));
+  return list;
+}
+function regionRects() {
+  return TRACKS.map(t => {
+    const ps = LESSONS.filter(l => l.track === t.id).map(l => POS[l.slug]);
+    let x0 = Math.min(...ps.map(p => p[0])) - 40, x1 = Math.max(...ps.map(p => p[0])) + 40;
+    const y0 = Math.min(...ps.map(p => p[1])) - 40, y1 = Math.max(...ps.map(p => p[1])) + 44;
+    if (x1 - x0 < 140) { const c = (x0 + x1) / 2; x0 = c - 70; x1 = c + 70; }
+    return { t, x0, y0, x1, y1 };
+  });
+}
+let mapSel = null, mapIntroDone = false;
+function viewMap() {
+  const r = resume();
+  const E = edges();
+  const regions = regionRects().map(g => '<g class="m-region"><rect x="' + g.x0 + '" y="' + g.y0 + '" width="' + (g.x1 - g.x0) + '" height="' + (g.y1 - g.y0) + '" rx="18"/><text x="' + (g.x0 + 14) + '" y="' + (g.y0 + 22) + '">' + esc(g.t.short) + "</text></g>").join("");
+  const order = s => OUTSIDE[s] ? 0 : BY[s].number;
+  const paths = E.map((e, i) => {
+    const warm = reached(e.a);
+    return '<path id="me-' + i + '" data-a="' + e.a + '" data-b="' + e.b + '" class="m-edge' + (warm ? " warm" : "") + (e.cross ? " cross" : "") + '" style="--d:' + (0.15 + order(e.b) * 0.06).toFixed(2) + 's" d="' + edgePath(e.a, e.b) + '"/>';
+  }).join("");
+  const dots = REDUCED ? "" : E.map((e, i) => (reached(e.a) && !isDone(e.b)) ? '<circle class="m-dot" r="3.4"><animateMotion dur="' + (2.2 + (i % 3) * 0.35) + 's" begin="' + ((i * 0.37) % 2).toFixed(2) + 's" repeatCount="indefinite" rotate="auto"><mpath href="#me-' + i + '"/></animateMotion></circle>' : "").join("");
+  const outs = Object.keys(OUTSIDE).map(k => {
+    const [x, y] = POS[k], o = OUTSIDE[k];
+    return '<a class="m-out" data-node="' + k + '" href="' + o.href + '" target="_blank" rel="noopener noreferrer" aria-label="' + esc(o.title + ": " + o.summary) + ' (opens the course)" style="--d:0s"><g transform="translate(' + x + "," + y + ')"><g class="pop"><rect x="' + (-OUT_W / 2) + '" y="' + (-OUT_H / 2) + '" width="' + OUT_W + '" height="' + OUT_H + '" rx="10"/><text y="-6">' + esc(o.title) + '</text><text class="s" y="13">' + (k === "patina" ? "the language" : "web services") + "</text></g></g></a>";
+  }).join("");
+  const nodes = LESSONS.map(l => {
+    const [x, y] = POS[l.slug];
+    const cls = ["m-node", isDone(l.slug) ? "done" : isReady(l) ? "ready" : "", r && r.slug === l.slug ? "next" : ""].join(" ");
+    const state = isDone(l.slug) ? "done" : isReady(l) ? "ready to learn" : "needs earlier lessons";
+    return '<a class="' + cls + '" data-node="' + l.slug + '" href="#l-' + l.slug + '" aria-label="Lesson ' + l.number + ": " + esc(l.title) + ", " + state + '" style="--d:' + (0.1 + l.number * 0.06).toFixed(2) + 's"><g transform="translate(' + x + "," + y + ')"><g class="pop"><circle class="ring" r="' + R_NODE + '"/><circle class="c" r="' + R_NODE + '"/><text class="n">' + pad(l.number) + '</text><text class="l" y="' + (R_NODE + 17) + '">' + esc(LABEL[l.slug]) + "</text></g></g></a>";
+  }).join("");
+  const intro = !mapIntroDone && !REDUCED;
+  return '<div class="mapbox"><aside class="infocard" id="infocard" aria-live="polite"></aside><div class="mapscroll" id="mapscroll"><svg id="map" class="' + (intro ? "intro" : "") + '" viewBox="0 0 ' + MAP_W + " " + MAP_H + '" role="group" aria-label="Topic map: lessons and how they connect. Patina and Temper feed in from the left.">' +
+    "<g>" + regions + "</g><g>" + paths + "</g><g>" + dots + '</g><g class="m-nodes">' + outs + nodes + "</g></svg></div>" +
+    '<p class="maphint">Drag sideways to see the whole map. Tap a lesson to open it.</p></div>';
+}
+function infoCard(slug) {
+  if (!slug) return "";
+  if (OUTSIDE[slug]) {
+    const o = OUTSIDE[slug];
+    return '<span class="k">Earlier course</span><h3>' + esc(o.title) + "</h3><p>" + esc(o.summary) + '</p><div class="rel"><span><b>Leads into:</b> ' + LESSONS.filter(l => l.needs.includes(slug)).map(l => '<a href="#l-' + l.slug + '">' + esc(l.title) + "</a>").join(", ") + '</span></div><a class="btn quiet sm" href="' + o.href + '" target="_blank" rel="noopener noreferrer">Open ' + esc(o.title) + " ↗</a>";
+  }
+  const l = BY[slug];
+  const st = isDone(slug) ? "Done" : isReady(l) ? "Ready: everything it builds on is done" : "Builds on lessons you have not done yet. You can still open it.";
+  return '<span class="k">' + pad(l.number) + " · " + esc(TR[l.track].title) + " · " + l.minutes + " min</span><h3>" + esc(l.title) + "</h3><p>" + rich(l.summary) + "</p>" +
+    '<div class="rel"><span><b>Builds on:</b> ' + l.needs.map(n => OUTSIDE[n] ? esc(OUTSIDE[n].title) : '<a href="#l-' + n + '">' + esc(BY[n].title) + "</a>").join(", ") + "</span>" +
+    (l.next.length ? "<span><b>Leads to:</b> " + l.next.map(n => '<a href="#l-' + n + '">' + esc(BY[n].title) + "</a>").join(", ") + "</span>" : "") + "</div>" +
+    '<span class="st muted">' + st + '</span><a class="btn sm" href="#l-' + l.slug + '">Open lesson →</a>';
+}
+function selectNode(slug) {
+  const svg = $("#map"); if (!svg) return;
+  mapSel = slug;
+  const card = $("#infocard"); if (card) card.innerHTML = infoCard(slug);
+  svg.querySelectorAll(".sel,.hl").forEach(e => e.classList.remove("sel", "hl"));
+  if (!slug) { svg.classList.remove("dim"); return; }
+  svg.classList.add("dim");
+  const keep = new Set([slug]);
+  svg.querySelectorAll(".m-edge").forEach(p => { if (p.dataset.a === slug || p.dataset.b === slug) { p.classList.add("hl"); keep.add(p.dataset.a); keep.add(p.dataset.b); } });
+  svg.querySelectorAll("[data-node]").forEach(n => { if (keep.has(n.dataset.node)) n.classList.add("hl"); if (n.dataset.node === slug) n.classList.add("sel"); });
+}
+function afterMap() {
+  const svg = $("#map"); if (!svg) return;
+  svg.querySelectorAll(".m-edge").forEach(p => { try { p.style.setProperty("--len", Math.ceil(p.getTotalLength())); } catch (e) { p.style.setProperty("--len", 1200); } });
+  if (svg.classList.contains("intro")) { mapIntroDone = true; setTimeout(() => svg.classList.remove("intro"), 2600); }
+  const def = resume();
+  const card = $("#infocard"); if (card) card.innerHTML = infoCard(mapSel || (def && def.slug));
+  const sc = $("#mapscroll");
+  if (sc && sc.scrollWidth > sc.clientWidth && def) { const ratio = POS[def.slug][0] / MAP_W; sc.scrollLeft = Math.max(0, ratio * sc.scrollWidth - sc.clientWidth / 2); }
+  svg.addEventListener("mouseover", e => { const n = e.target.closest("[data-node]"); if (n) selectNode(n.dataset.node); });
+  svg.addEventListener("focusin", e => { const n = e.target.closest("[data-node]"); if (n) selectNode(n.dataset.node); });
+  svg.addEventListener("mouseleave", () => { svg.classList.remove("dim"); svg.querySelectorAll(".hl").forEach(e => e.classList.remove("hl")); });
+  svg.addEventListener("click", e => {
+    const n = e.target.closest(".m-node"); if (!n || REDUCED || e.metaKey || e.ctrlKey) return;
+    e.preventDefault(); selectNode(n.dataset.node); svg.classList.add("launch");
+    setTimeout(() => { location.hash = "l-" + n.dataset.node; }, 300);
+  });
+}
+
+// ---------- "where this sits" strip on each lesson
+let narrow = window.innerWidth < 640;
+function miniMapNarrow(l) {
+  const W = 360, BW = 318, BX = 30, BH = 34, items = []; let y = 10;
+  const cap = t => { items.push('<text class="mm-cap" x="' + BX + '" y="' + (y + 12) + '">' + t + "</text>"); y += 22; };
+  const box = (slug, kind) => {
+    const out = !!OUTSIDE[slug], b = BY[slug], label = out ? OUTSIDE[slug].title : b.title;
+    const cls = "mm-node " + (kind === "cur" ? "cur" : out ? "out" : isDone(slug) ? "done" : "");
+    items.push('<a class="' + cls + '" href="' + (out ? OUTSIDE[slug].href : "#l-" + slug) + '"' + (out ? ' target="_blank" rel="noopener noreferrer"' : "") + ' aria-label="' + esc((out ? "Course " : "Lesson " + b.number + ": ") + label) + '"><g transform="translate(' + BX + "," + y + ')"><rect width="' + BW + '" height="' + BH + '" rx="9"/>' +
+      (out ? '<text x="12" y="' + BH / 2 + '">' + esc(label) + " ↗</text>" : '<text class="n" x="12" y="' + BH / 2 + '">' + pad(b.number) + '</text><text x="40" y="' + BH / 2 + '">' + esc(label.length > 34 ? label.slice(0, 33) + "…" : label) + "</text>") + "</g></a>");
+    const cy = y + BH / 2; y += BH + 8; return cy;
+  };
+  cap("Builds on"); const ys = l.needs.map(s => box(s));
+  y += 6; cap("This lesson"); const cy = box(l.slug, "cur");
+  let ye = [];
+  if (l.next.length) { y += 6; cap("Leads to"); ye = l.next.map(s => box(s)); }
+  const warmIn = l.needs.some(reached), warmOut = isDone(l.slug);
+  let rail = '<path id="mmr-in" class="mm-edge' + (warmIn ? " warm" : "") + '" d="M14,' + ys[0] + " L14," + cy + '"/>' + ys.concat([cy]).map(v => '<path class="mm-edge' + (warmIn ? " warm" : "") + '" d="M14,' + v + " L" + BX + "," + v + '"/>').join("");
+  if (ye.length) rail += '<path id="mmr-out" class="mm-edge' + (warmOut ? " warm" : "") + '" d="M14,' + cy + " L14," + ye[ye.length - 1] + '"/>' + ye.map(v => '<path class="mm-edge' + (warmOut ? " warm" : "") + '" d="M14,' + v + " L" + BX + "," + v + '"/>').join("");
+  const dots = REDUCED ? "" : (warmIn ? '<circle class="m-dot" r="3.2"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#mmr-in"/></animateMotion></circle>' : "") + (warmOut && ye.length ? '<circle class="m-dot" r="3.2"><animateMotion dur="1.6s" repeatCount="indefinite"><mpath href="#mmr-out"/></animateMotion></circle>' : "");
+  return '<div class="sits"><div class="sits-h"><span class="label">Where this sits</span><a class="link" href="#map">Full map</a></div><svg viewBox="0 0 ' + W + " " + (y + 4) + '" role="group" aria-label="Lessons this one builds on and leads to">' + rail + dots + items.join("") + "</svg></div>";
+}
+function miniMap(l) {
+  if (narrow) return miniMapNarrow(l);
+  const L = l.needs, Rn = l.next;
+  const rows = Math.max(L.length, Rn.length, 1), RH = 52, top = 36, H = top + rows * RH + 8, W = 760, BW = 210, BH = 36;
+  const colX = [10, 275, 540];
+  const y = (i, n) => top + (rows * RH) / 2 + (i - (n - 1) / 2) * RH;
+  const cy = top + (rows * RH) / 2;
+  const box = (slug, x, yy, kind) => {
+    const out = !!OUTSIDE[slug], b = BY[slug];
+    const cls = "mm-node " + (kind === "cur" ? "cur" : out ? "out" : isDone(slug) ? "done" : "");
+    const href = out ? OUTSIDE[slug].href : "#l-" + slug;
+    const label = out ? OUTSIDE[slug].title : b.title;
+    const short = label.length > 22 ? label.slice(0, 21).trimEnd() + "…" : label;
+    return '<a class="' + cls + '" href="' + href + '"' + (out ? ' target="_blank" rel="noopener noreferrer"' : "") + ' aria-label="' + esc((out ? "Course " : "Lesson " + b.number + ": ") + label) + '"><g transform="translate(' + x + "," + (yy - BH / 2) + ')"><rect width="' + BW + '" height="' + BH + '" rx="9"/>' +
+      (out ? '<text x="12" y="' + BH / 2 + '">' + esc(short) + " ↗</text>" : '<text class="n" x="12" y="' + BH / 2 + '">' + pad(b.number) + '</text><text x="40" y="' + BH / 2 + '">' + esc(short) + "</text>") + "</g></a>";
+  };
+  let paths = "", dots = "", nodes = "";
+  L.forEach((s, i) => {
+    const yy = y(i, L.length), d = "M" + (colX[0] + BW) + "," + yy + " C" + (colX[0] + BW + 30) + "," + yy + " " + (colX[1] - 30) + "," + cy + " " + colX[1] + "," + cy;
+    const warm = reached(s);
+    paths += '<path id="mm-in-' + i + '" class="mm-edge' + (warm ? " warm" : "") + '" d="' + d + '"/>';
+    if (warm && !REDUCED) dots += '<circle class="m-dot" r="3.2"><animateMotion dur="1.8s" begin="' + (i * 0.4) + 's" repeatCount="indefinite"><mpath href="#mm-in-' + i + '"/></animateMotion></circle>';
+    nodes += box(s, colX[0], yy);
+  });
+  Rn.forEach((s, i) => {
+    const yy = y(i, Rn.length), d = "M" + (colX[1] + BW) + "," + cy + " C" + (colX[1] + BW + 30) + "," + cy + " " + (colX[2] - 30) + "," + yy + " " + colX[2] + "," + yy;
+    const warm = isDone(l.slug);
+    paths += '<path id="mm-out-' + i + '" class="mm-edge' + (warm ? " warm" : "") + '" d="' + d + '"/>';
+    if (warm && !isDone(s) && !REDUCED) dots += '<circle class="m-dot" r="3.2"><animateMotion dur="1.8s" begin="' + (i * 0.4) + 's" repeatCount="indefinite"><mpath href="#mm-out-' + i + '"/></animateMotion></circle>';
+    nodes += box(s, colX[2], yy);
+  });
+  nodes += box(l.slug, colX[1], cy, "cur");
+  const caps = '<text class="mm-cap" x="' + colX[0] + '" y="18">Builds on</text><text class="mm-cap" x="' + colX[1] + '" y="18">This lesson</text>' + (Rn.length ? '<text class="mm-cap" x="' + colX[2] + '" y="18">Leads to</text>' : '<text class="mm-cap" x="' + colX[2] + '" y="18">The end of the path</text>');
+  return '<div class="sits"><div class="sits-h"><span class="label">Where this sits</span><a class="link" href="#map">Full map</a></div><svg viewBox="0 0 ' + W + " " + H + '" role="group" aria-label="Lessons this one builds on and leads to">' + caps + paths + dots + nodes + "</svg></div>";
+}
+
+// ---------- animated figures: each frame is the complete state, so stepping back and forth is exact
+const FIG = {};
+FIG.mutex = {
+  title: "One holder at a time",
+  svg: '<svg viewBox="0 0 640 250"><rect class="fg-box fg-flash" data-k="room" x="350" y="40" width="250" height="170" rx="14"/><text class="fg-tm" x="364" y="62">Mutex&lt;Vec&lt;Note&gt;&gt;</text>' +
+    '<rect class="fg-soft" x="440" y="120" width="140" height="70" rx="10"/><text class="fg-tb" data-k="data" x="452" y="160">notes: 3</text>' +
+    '<rect class="fg-soft" x="340" y="100" width="20" height="60" rx="4"/><text class="fg-tm" data-k="lock" x="364" y="90">unlocked</text>' +
+    '<text class="fg-tm" x="40" y="230">guards dropped:</text>' +
+    ["T1", "T2", "T3"].map(t => '<g class="fg-mv fg-tok" data-k="' + t + '"><circle r="20"/><text>' + t + "</text></g>").join("") + "</svg>",
+  frames: (() => {
+    const Q = [[290, 130], [235, 130], [180, 130]], IN = [400, 150], D = i => [160 + i * 48, 225];
+    const f = (pos, lock, data, hot, cap, room) => ({ cap, set: { T1: { xy: pos[0], c: { hot: hot === 0, wait: hot !== 0 && pos[0] !== D(0) } }, T2: { xy: pos[1], c: { hot: hot === 1, wait: hot !== 1 && pos[1] !== D(1) } }, T3: { xy: pos[2], c: { hot: hot === 2, wait: hot !== 2 && pos[2] !== D(2) } }, lock: { t: lock }, data: { t: data }, room: { c: { on: !!room } } } });
+    return [
+      f([Q[0], Q[1], Q[2]], "unlocked", "notes: 3", -1, "Three threads call `lock()` at the same moment."),
+      f([IN, Q[1], Q[2]], "held by T1", "notes: 3", 0, "T1 gets the guard. T2 and T3 are blocked: the OS parks them until the lock is free."),
+      f([IN, Q[1], Q[2]], "held by T1", "notes: 4", 0, "Through its guard, T1 has `&mut Vec`. Nobody else can see the list while it changes.", true),
+      f([D(0), IN, Q[0]], "held by T2", "notes: 4", 1, "T1's guard is dropped at the end of its scope. The lock passes to T2."),
+      f([D(0), IN, Q[0]], "held by T2", "notes: 5", 1, "T2 pushes its note.", true),
+      f([D(0), D(1), IN], "held by T3", "notes: 6", 2, "Then T3. Each update happened alone, in some order.", true),
+      f([D(0), D(1), D(2)], "unlocked", "notes: 6", -1, "All three guards dropped. There was no way to reach the Vec without the lock.")
+    ];
+  })()
+};
+FIG.owner = {
+  title: "One owner, many senders",
+  svg: '<svg viewBox="0 0 640 250"><text class="fg-tm" x="30" y="28">workers</text><text class="fg-tm" x="230" y="28">channel</text><text class="fg-tm" x="500" y="28">owner thread</text>' +
+    [60, 125, 190].map((y, i) => '<rect class="fg-soft" x="20" y="' + (y - 20) + '" width="70" height="40" rx="8"/><text class="fg-tm" x="34" y="' + (y + 4) + '">W' + (i + 1) + "</text>").join("") +
+    '<rect class="fg-soft" x="200" y="105" width="250" height="40" rx="20"/><circle class="fg-box fg-flash" data-k="own" cx="540" cy="125" r="48"/><text class="fg-tm" x="540" y="112" text-anchor="middle">total</text><text class="fg-tb" data-k="total" x="540" y="138" text-anchor="middle">0</text>' +
+    ["m1", "m2", "m3"].map((k, i) => '<g class="fg-mv fg-tok" data-k="' + k + '"><rect x="-34" y="-14" width="68" height="28" rx="6"/><text>Add(' + (i + 1) * 10 + ")</text></g>").join("") +
+    '<text class="fg-tm" x="30" y="235">main:</text><g class="fg-mv fg-tok hot" data-k="reply"><rect x="-22" y="-14" width="44" height="28" rx="6"/><text>60</text></g></svg>',
+  frames: (() => {
+    const W = [[130, 60], [130, 125], [130, 190]], C = [[250, 125], [325, 125], [400, 125]], O = [540, 125];
+    const f = (m, total, cap, reply, flash) => ({ cap, set: { m1: { xy: m[0], o: m[0] === O ? 0 : 1 }, m2: { xy: m[1], o: m[1] === O ? 0 : 1 }, m3: { xy: m[2], o: m[2] === O ? 0 : 1 }, total: { t: total }, own: { c: { on: !!flash } }, reply: { xy: reply || O, o: reply ? 1 : 0 } } });
+    return [
+      f([W[0], W[1], W[2]], "0", "Three workers each own one message."),
+      f([C[2], C[1], C[0]], "0", "`send()` moves each message into the channel. The workers no longer have them."),
+      f([O, C[1], C[0]], "10", "The owner receives one message at a time and updates its own total. No lock: nobody else can reach it.", null, true),
+      f([O, O, C[0]], "30", "Next message, same owner.", null, true),
+      f([O, O, O], "60", "All three applied, in arrival order.", null, true),
+      f([O, O, O], "60", "A `Get` request carries its own reply channel. The answer travels back the same way.", [110, 230])
+    ];
+  })()
+};
+FIG.poll = {
+  title: "poll, Pending, wake, poll, Ready",
+  svg: '<svg viewBox="0 0 640 250"><rect class="fg-box" x="20" y="50" width="170" height="150" rx="12"/><text class="fg-tm" x="34" y="74">executor</text>' +
+    '<rect class="fg-box fg-flash" data-k="fut" x="240" y="70" width="170" height="110" rx="12"/><text class="fg-tm" x="254" y="94">your future</text><text class="fg-tb" data-k="state" x="254" y="132">state: start</text>' +
+    '<rect class="fg-box fg-flash" data-k="timer" x="470" y="70" width="150" height="110" rx="12"/><text class="fg-tm" x="484" y="94">timer / socket</text>' +
+    '<path class="fg-arrow" data-k="a1" d="M190,105 L240,105"/><text class="fg-tm" x="196" y="98">poll</text><path class="fg-arrow" data-k="a2" d="M240,150 L190,150"/><text class="fg-tm" x="194" y="168" data-k="ret">  </text>' +
+    '<g class="fg-mv fg-tok" data-k="o1"><rect x="-26" y="-12" width="52" height="24" rx="6"/><text>task</text></g><g class="fg-mv fg-tok" data-k="o2"><rect x="-26" y="-12" width="52" height="24" rx="6"/><text>task</text></g>' +
+    '<g class="fg-mv fg-tok hot" data-k="waker"><rect x="-30" y="-12" width="60" height="24" rx="12"/><text>waker</text></g></svg>',
+  frames: (() => {
+    const EX = [105, 125], TM = [545, 140], FU = [325, 155];
+    const f = (o) => ({ cap: o.cap, set: { a1: { c: { on: !!o.poll } }, a2: { c: { on: !!o.ret } }, ret: { t: o.ret || " " }, state: { t: o.state }, waker: { xy: o.w }, fut: { c: { on: !!o.fl } }, timer: { c: { on: !!o.tf } }, o1: { xy: o.busy ? [70, 170] : [70, 230], o: o.busy ? 1 : 0, c: { hot: !!o.busy } }, o2: { xy: o.busy ? [140, 170] : [140, 230], o: o.busy ? 1 : 0 } } });
+    return [
+      f({ cap: "The executor calls `poll()` on the future.", poll: 1, state: "state: start", w: EX, fl: 1 }),
+      f({ cap: "It is not ready. Before returning `Pending`, it hands its waker to the timer it waits on.", ret: "Pending", state: "parked at .await", w: TM, tf: 1 }),
+      f({ cap: "The executor moves on to other tasks. A parked future uses no thread at all.", state: "parked at .await", w: TM, busy: 1 }),
+      f({ cap: "The timer fires and calls `wake()`. The task goes back in the executor's ready queue.", state: "parked at .await", w: EX, tf: 1 }),
+      f({ cap: "`poll()` again. The state machine resumes after the `.await` and returns `Ready(value)`.", poll: 1, ret: "Ready", state: "Ready(value)", w: EX, fl: 1 })
+    ];
+  })()
+};
+FIG.blocking = {
+  title: "One blocking call, everyone waits",
+  svg: '<svg viewBox="0 0 640 250"><text class="fg-tm" x="20" y="74">worker</text><text class="fg-tm" x="20" y="174">blocking pool</text>' +
+    '<path class="fg-line" d="M120,90 L620,90"/><path class="fg-line" d="M120,190 L620,190"/>' +
+    '<g class="fg-mv" data-k="bar"><rect class="fg-bar" x="0" y="-14" width="240" height="28" rx="6"/><text class="fg-tm" x="10" y="5" style="fill:var(--card)">thread::sleep(200 ms)</text></g>' +
+    [0, 1, 2, 3, 4, 5].map(i => '<g class="fg-mv fg-tok" data-k="k' + i + '"><circle r="12"/><text>t</text></g>').join("") +
+    '<text class="fg-tm" data-k="note" x="120" y="236"> </text></svg>',
+  frames: (() => {
+    const xs = [150, 230, 310, 390, 470, 550];
+    const ticks = (late) => { const o = {}; xs.forEach((x, i) => { const isLate = late && i >= 1 && i <= 3; o["k" + i] = { xy: [isLate ? 420 + i * 12 : x, 90], c: { hot: !isLate, wait: isLate } }; }); return o; };
+    const f = (cap, late, bar, note) => ({ cap, set: Object.assign(ticks(late), { bar: { xy: bar ? bar.xy : [160, 90], o: bar ? 1 : 0 }, note: { t: note || " " } }) });
+    return [
+      f("A ticker task wants to run every 50 ms on the worker thread. Each `.await` gives the thread back.", false, null, "every tick on time"),
+      f("Another task calls `std::thread::sleep`. It never reaches an `.await`, so the thread is stuck.", false, { xy: [170, 90] }, " "),
+      f("The ticks that should have run meanwhile all wait, then rush through late. In the example: a 211 ms gap.", true, { xy: [170, 90] }, "worst gap: 211 ms"),
+      f("With `spawn_blocking`, the sleep runs on the blocking pool instead.", false, { xy: [170, 190] }, " "),
+      f("The worker stays free, and every tick runs on time. Worst gap: 51 ms.", false, { xy: [170, 190] }, "worst gap: 51 ms")
+    ];
+  })()
+};
+FIG.channel = {
+  title: "A bounded channel, capacity 2",
+  svg: '<svg viewBox="0 0 640 250"><text class="fg-tm" x="30" y="40">producer</text><text class="fg-tm" x="250" y="40">channel (2 slots)</text><text class="fg-tm" x="470" y="40">consumer</text>' +
+    '<rect class="fg-box" x="20" y="60" width="120" height="150" rx="12"/><rect class="fg-soft" x="240" y="100" width="160" height="60" rx="30"/><rect class="fg-box" x="460" y="60" width="150" height="150" rx="12"/>' +
+    '<circle class="fg-cell" cx="285" cy="130" r="22"/><circle class="fg-cell" cx="355" cy="130" r="22"/>' +
+    '<text class="fg-tm" data-k="ps" x="30" y="232"> </text><text class="fg-tm" data-k="clock" x="470" y="232">0 ms</text>' +
+    [1, 2, 3, 4, 5].map(i => '<g class="fg-mv fg-tok" data-k="j' + i + '"><circle r="18"/><text>' + i + "</text></g>").join("") + "</svg>",
+  frames: (() => {
+    const P = i => [55 + ((i - 1) % 2) * 50, 90 + Math.floor((i - 1) / 2) * 44], S = [[285, 130], [355, 130]], C = [535, 120], W = [175, 130], DONE = i => [497 + ((i - 1) % 3) * 40, 166 + Math.floor((i - 1) / 3) * 30];
+    const f = (cap, pos, clock, ps, waitJ) => { const set = { clock: { t: clock }, ps: { t: ps || " " } }; for (let i = 1; i <= 5; i++) { const p = pos[i]; set["j" + i] = { xy: p[0], o: p[1] === "x" ? 0.35 : 1, c: { hot: p[1] === "c", wait: waitJ === i } }; } return { cap, set }; };
+    return [
+      f("Five jobs. The channel holds two. The consumer takes 100 ms per job.", { 1: [P(1)], 2: [P(2)], 3: [P(3)], 4: [P(4)], 5: [P(5)] }, "0 ms"),
+      f("Job 1 goes straight to the consumer, so jobs 2 and 3 both fit in the slots.", { 1: [C, "c"], 2: [S[1]], 3: [S[0]], 4: [P(4)], 5: [P(5)] }, "0 ms"),
+      f("Job 4: the channel is full, so `send().await` waits. Nothing piles up.", { 1: [C, "c"], 2: [S[1]], 3: [S[0]], 4: [W], 5: [P(5)] }, "0 ms", "send().await is waiting", 4),
+      f("100 ms: job 1 is done, the consumer takes job 2, a slot frees, and job 4 goes in.", { 1: [DONE(1), "x"], 2: [C, "c"], 3: [S[1]], 4: [S[0]], 5: [W] }, "100 ms", "send().await is waiting", 5),
+      f("200 ms: the same again for job 5. The producer runs at the consumer's pace.", { 1: [DONE(1), "x"], 2: [DONE(2), "x"], 3: [C, "c"], 4: [S[1]], 5: [S[0]] }, "200 ms"),
+      f("500 ms: all done. Memory stayed bounded the whole time.", { 1: [DONE(1), "x"], 2: [DONE(2), "x"], 3: [DONE(3), "x"], 4: [DONE(4), "x"], 5: [DONE(5), "x"] }, "500 ms")
+    ];
+  })()
+};
+FIG.locality = {
+  title: "Side by side, or scattered",
+  svg: (() => {
+    let s = '<svg viewBox="0 0 640 250"><text class="fg-tm" x="20" y="36">Vec&lt;Point&gt;: points side by side</text>';
+    for (let i = 0; i < 16; i++) s += '<rect class="fg-cell pt" data-k="a' + i + '" x="' + (20 + i * 36 + Math.floor(i / 4) * 8) + '" y="48" width="32" height="32" rx="4"/>';
+    for (let g = 0; g < 4; g++) s += '<text class="fg-tm" x="' + (20 + g * 152) + '" y="98">line ' + (g + 1) + "</text>";
+    s += '<text class="fg-tm" x="20" y="140">Vec&lt;Box&lt;Point&gt;&gt;: each point somewhere else</text>';
+    for (let i = 0; i < 32; i++) s += '<rect class="fg-cell" data-k="b' + i + '" x="' + (20 + (i % 16) * 36 + Math.floor((i % 16) / 4) * 8) + '" y="' + (150 + Math.floor(i / 16) * 38) + '" width="32" height="32" rx="4"/>';
+    return s + '<text class="fg-tb" data-k="ca" x="420" y="36">lines fetched: 0</text><text class="fg-tb" data-k="cb" x="420" y="140">lines fetched: 0</text></svg>';
+  })(),
+  frames: (() => {
+    const scat = [21, 6, 28, 13, 2, 25, 10, 31]; // where each boxed point lives
+    const frames = [];
+    for (let k = 0; k <= 8; k++) {
+      const set = {};
+      const linesA = k === 0 ? 0 : Math.floor((k - 1) / 4) + 1;
+      for (let i = 0; i < 16; i++) set["a" + i] = { c: { cur: i === k - 1, fetched: k > 0 && Math.floor(i / 4) < linesA } };
+      const fetchedB = new Set(scat.slice(0, k).map(c => Math.floor(c / 4)));
+      for (let i = 0; i < 32; i++) set["b" + i] = { c: { pt: scat.includes(i), cur: i === scat[k - 1], fetched: fetchedB.has(Math.floor(i / 4)) } };
+      set.ca = { t: "lines fetched: " + linesA }; set.cb = { t: "lines fetched: " + fetchedB.size };
+      const cap = k === 0 ? "Summing 8 points. The CPU reads memory a cache line at a time (here, 4 cells per line)."
+        : k <= 4 ? "Side by side: one line brings in four points. Boxed: every point is in a different line."
+        : k < 8 ? "The next line of the flat Vec is fetched once; the boxed points keep landing in new places."
+        : "8 points: 2 lines fetched for the Vec, 8 for the boxes. In the example that was about 3× slower.";
+      frames.push({ cap, set });
+    }
+    return frames;
+  })(),
+  ms: 1100
+};
+
+const figState = {};
+let figObserver = null;
+function figHtml(id, key) {
+  const F = FIG[id];
+  return '<figure class="fig" data-fig="' + id + '" data-key="' + key + '"><div class="fig-h"><span class="label">' + esc(F.title) + '</span><div class="fig-ctl">' +
+    '<button data-act="fig-prev" aria-label="Previous step">←</button><span class="ct" aria-hidden="true"></span><button data-act="fig-next" aria-label="Next step">→</button>' +
+    '<button data-act="fig-play" aria-label="Pause animation">❚❚</button></div></div>' + F.svg +
+    '<div class="dots" aria-hidden="true">' + F.frames.map(() => "<i></i>").join("") + "</div><figcaption></figcaption></figure>";
+}
+function figApply(el, instant) {
+  const id = el.dataset.fig, F = FIG[id], st = figState[el.dataset.key];
+  const fr = F.frames[st.i];
+  if (instant) el.classList.add("snap");
+  Object.entries(fr.set).forEach(([k, v]) => {
+    const node = el.querySelector('[data-k="' + k + '"]'); if (!node) return;
+    if (v.xy) node.style.transform = "translate(" + v.xy[0] + "px," + v.xy[1] + "px)";
+    if (v.o !== undefined) node.style.opacity = v.o;
+    if (v.t !== undefined) node.textContent = v.t;
+    if (v.c) Object.entries(v.c).forEach(([c, on]) => node.classList.toggle(c, !!on));
+  });
+  if (instant) { void el.offsetWidth; el.classList.remove("snap"); }
+  el.querySelector("figcaption").innerHTML = rich(fr.cap);
+  el.querySelector(".ct").textContent = (st.i + 1) + " / " + F.frames.length;
+  el.querySelectorAll(".dots i").forEach((d, j) => d.classList.toggle("on", j <= st.i));
+  const play = el.querySelector('[data-act="fig-play"]');
+  play.textContent = st.playing ? "❚❚" : "▶"; play.setAttribute("aria-label", st.playing ? "Pause animation" : "Play animation");
+  el.querySelector("figcaption").setAttribute("aria-live", st.playing ? "off" : "polite");
+}
+function figTick(el) {
+  const st = figState[el.dataset.key]; clearTimeout(st.t);
+  if (!st.playing || !st.visible) return;
+  const F = FIG[el.dataset.fig], last = st.i === F.frames.length - 1;
+  st.t = setTimeout(() => { st.i = last ? 0 : st.i + 1; figApply(el, last); figTick(el); }, (F.ms || 1900) * (last ? 1.8 : 1) + (st.i === 0 ? 400 : 0));
+}
+function setupFigures() {
+  if (figObserver) figObserver.disconnect();
+  figObserver = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => {
+    const st = figState[e.target.dataset.key]; if (!st) return;
+    st.visible = e.isIntersecting; figTick(e.target);
+  }), { threshold: 0.5 }) : null;
+  document.querySelectorAll(".fig").forEach(el => {
+    const key = el.dataset.key;
+    if (!figState[key]) figState[key] = { i: 0, playing: !REDUCED, visible: !figObserver };
+    figApply(el, true);
+    if (figObserver) figObserver.observe(el); else figTick(el);
+  });
+}
+
+// ---------- routing
+function route() {
+  const h = location.hash.replace(/^#/, "");
+  if (h.startsWith("l-") && BY[h.slice(2)]) return { v: "lesson", slug: h.slice(2) };
+  if (["glossary", "sheet", "errors"].includes(h)) return { v: h };
+  return { v: "map" };
+}
+let R = route(), armed = false;
+
+// ---------- views
+function header() {
+  const cur = R.v === "lesson" ? "map" : R.v;
+  const links = [["map", "Map"], ["glossary", "Glossary"], ["sheet", "Sheet"], ["errors", "Errors"]];
+  return '<a class="skip" href="#content" data-skip>Skip to content</a><header class="top"><div class="rule"></div><div class="bar"><div class="wrap"><div class="row">' +
+    '<a class="brand" href="#map" aria-label="Anneal: the map"><svg viewBox="0 0 28 28" aria-hidden="true"><defs><linearGradient id="bg" x1="0" x2="1"><stop offset="0" stop-color="var(--steel)"/><stop offset="1" stop-color="var(--amber)"/></linearGradient></defs><rect x="3" y="9" width="22" height="10" rx="3" fill="url(#bg)"/><path d="M6 6 C9 3, 12 9, 15 6 S21 3, 22 6" fill="none" stroke="var(--ember)" stroke-width="1.6" stroke-linecap="round"/><path d="M6 23 h16" stroke="var(--ink)" stroke-width="1.6" stroke-linecap="round"/></svg><span>Anneal</span></a>' +
+    '<nav class="main" aria-label="Course">' + links.map(([k, t]) => '<a href="#' + k + '"' + (cur === k ? ' aria-current="page"' : "") + ">" + t + "</a>").join("") + "</nav>" +
+    '<a class="count" href="#map" aria-label="' + doneCount() + " of " + LESSONS.length + ' lessons complete">' + doneCount() + "/" + LESSONS.length + "</a></div></div></div></header>";
+}
+function footer() {
+  return '<footer><div class="wrap"><p>Anneal is the third course, after Patina and Temper. Every example was compiled and run with Rust 1.97 (Tokio 1.54, Axum 0.8), and every output and timing shown is a real run on a 2-core machine. This page does not run code.</p><p id="savenote">' +
+    (remote ? "Progress is saved to your claude.ai account and this browser." : local ? "Progress stays in this browser." : "Progress can't be saved in this view; it lasts until you close the page.") + "</p></div></footer>";
+}
+function viewHome() {
+  const n = doneCount(), all = n === LESSONS.length, r = resume(), kc = kindCounts();
+  const started = n > 0 || Object.keys(P.answers).length > 0;
+  return '<main id="content"><div class="wrap"><section class="hero">' +
+    '<p class="eyebrow">Course three · ' + LESSONS.length + " lessons · about " + Math.round(TOTAL_MIN / 60 * 2) / 2 + " hours</p>" +
+    "<h1>" + (all ? "You have seen what happens under the code." : "What happens under the code.") + "</h1>" +
+    '<p class="lede">' + (all ? "Threads, tasks, memory, and a real service measured and fixed. The sheet and the errors page are worth keeping open." :
+      "Patina taught the language. Temper built a web service. Anneal opens the hood: threads and locks, what a future really is, where memory goes, and how to measure. It ends by putting Temper's notes service under load and making it faster.") + "</p>" +
+    '<div class="family" aria-label="The course series"><a href="' + OUTSIDE.patina.href + '" target="_blank" rel="noopener noreferrer">Patina ↗</a><span class="arr">→</span><a href="' + OUTSIDE.temper.href + '" target="_blank" rel="noopener noreferrer">Temper ↗</a><span class="arr">→</span><b>Anneal</b></div>' +
+    '<div class="start-row">' + (r ? '<a class="btn" href="#l-' + r.slug + '">' + (n === 0 ? "Start with lesson 1" : "Continue · " + esc(r.title)) + " →</a>" : '<a class="btn" href="#sheet">Open the sheet →</a>') +
+    '<span class="mono muted" style="font-size:14px">' + n + " of " + LESSONS.length + " complete</span></div>" +
+    '<div class="progress" role="progressbar" aria-label="Lessons completed" aria-valuemin="0" aria-valuemax="' + LESSONS.length + '" aria-valuenow="' + n + '"><i style="width:' + (100 * n / LESSONS.length) + '%"></i></div>' +
+    '<p class="qcount">Questions right: <b>' + kc.what[0] + "/" + kc.what[1] + "</b> on what an idea is · <b>" + kc.why[0] + "/" + kc.why[1] + "</b> on why it exists</p></section>" +
+    '<section class="mapsec" aria-labelledby="map-h"><div class="mapsec-head"><h2 id="map-h">The map</h2><div class="legend"><span><i></i>not yet</span><span><i class="n"></i>ready</span><span><i class="d"></i>done</span><span>Heat flows from what you know to what it unlocks.</span></div></div>' +
+    '<div class="mapgrid">' + viewMap() + "</div></section>" +
+    '<section class="path" aria-labelledby="path-h"><h2 id="path-h">The lessons, in order</h2>' +
+    TRACKS.map(t => '<div class="track"><h3>' + esc(t.title) + " <span>· " + esc(t.summary) + '</span></h3><ul class="lessons">' + LESSONS.filter(l => l.track === t.id).map(l =>
+      '<li class="' + (isDone(l.slug) ? "done" : "") + '"><a href="#l-' + l.slug + '"><span class="num">' + pad(l.number) + '</span><span class="body"><span class="t">' + esc(l.title) + '</span><span class="s">' + rich(l.summary) + '</span></span><span class="min">' + l.minutes + ' min</span><span class="tick" aria-label="' + (isDone(l.slug) ? "Done" : "Not done") + '">✓</span></a></li>').join("") + "</ul></div>").join("") + "</section>" +
+    (started ? '<div class="reset">' + (armed ? "<span>This clears every answer on this device" + (remote ? " and in your account" : "") + '.</span><button class="btn sm" data-act="reset-yes">Clear progress</button><button class="btn sm quiet" data-act="reset-no">Keep it</button>' : '<button class="btn sm quiet" data-act="reset">Reset progress</button>') + "</div>" : "") +
+    "</div></main>";
+}
+function codeBlock(b, idx) {
+  const std = (b.lang || "rust") === "rust" && /fn main/.test(b.code) && !/tokio|axum|serde/.test(b.code);
+  const pg = std ? "https://play.rust-lang.org/?version=stable&mode=release&edition=2024&code=" + encodeURIComponent(b.code) : null;
+  return '<div class="code"><div class="cap"><span>' + esc(b.file || (b.lang === "plain" ? "" : "src/main.rs")) + '</span><span class="acts"><button data-act="copy" data-i="' + idx + '">Copy</button>' + (pg ? '<a href="' + esc(pg) + '" target="_blank" rel="noopener noreferrer">Open in Playground ↗</a>' : "") + "</span></div>" +
+    "<pre><code>" + hl(b.code, b.lang) + "</code></pre>" + (b.out ? '<div class="out"><div class="lbl">Output</div><pre>' + esc(b.out) + "</pre></div>" : "") + "</div>" +
+    (b.caption ? '<p class="figcap">' + rich(b.caption) + "</p>" : "");
+}
+const pickState = {};
+function pick(b, idx) {
+  const key = R.slug + ":" + idx, p = pickState[key];
+  const opt = id => {
+    const sel = p === id, cls = sel ? (id === b.answer ? "right" : "wrong") : "";
+    return '<label class="' + cls + '"><span class="h"><input type="radio" name="pk-' + idx + '" data-act="pick" data-i="' + idx + '" value="' + id + '"' + (sel ? " checked" : "") + "> " + id.toUpperCase() + "</span><pre><code>" + hl(b[id]) + "</code></pre></label>";
+  };
+  const wrongId = b.answer === "a" ? "B" : "A";
+  return '<fieldset class="pick"><legend>' + rich(b.prompt) + '</legend><div class="opts">' + opt("a") + opt("b") + "</div>" +
+    '<div class="res" aria-live="polite">' + (p ? "<b>" + (p === b.answer ? "Yes, this one compiles." : "This one does not compile.") + "</b> Version " + (b.answer === "a" ? "B" : "A") + " fails with:" + '<div class="err">' + esc(b.error) + '</div><p style="margin-top:8px">' + rich(b.why) + "</p>" : '<span class="muted">Pick the version the compiler accepts.</span>') + "</div></fieldset>";
+}
+function block(b, idx) {
+  switch (b.type) {
+    case "p": return "<p>" + rich(b.text) + "</p>";
+    case "h": return "<h2>" + rich(b.text) + "</h2>";
+    case "ul": return "<ul>" + b.items.map(x => "<li>" + rich(x) + "</li>").join("") + "</ul>";
+    case "callout": return '<div class="callout' + (b.tone === "warn" ? " warn" : "") + '"><div class="ct">' + rich(b.title) + "</div>" + rich(b.text) + "</div>";
+    case "code": return codeBlock(b, idx);
+    case "pick": return pick(b, idx);
+    case "figure": return figHtml(b.id, R.slug + ":" + idx);
+    case "links": return '<ul class="links">' + b.items.map(x => '<li><a href="' + esc(x.href) + '" target="_blank" rel="noopener noreferrer">' + esc(x.label) + " ↗</a> <span>— " + rich(x.note) + "</span></li>").join("") + "</ul>";
+  }
+  return "";
+}
+function order(key, n) {
+  let h = 2166136261; for (let i = 0; i < key.length; i++) { h ^= key.charCodeAt(i); h = Math.imul(h, 16777619); }
+  const idx = [...Array(n).keys()];
+  for (let i = n - 1; i > 0; i--) { h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0; const j = h % (i + 1); [idx[i], idx[j]] = [idx[j], idx[i]]; }
+  return idx;
+}
+function quiz(l) {
+  const right = l.quiz.filter((q, i) => P.answers[qid(l, i)] === q.answer).length, total = l.quiz.length;
+  return '<section class="check" aria-labelledby="check-h"><h2 id="check-h">Check</h2><p class="st">' + (right === total ? "All " + total + " landed. This lesson is marked done, and its node on the map is warm." : right + " of " + total + " correct. Two questions ask what the idea is; one asks why it exists. A wrong answer can be changed.") + "</p>" +
+    '<ol class="qs">' + l.quiz.map((q, i) => {
+      const a = P.answers[qid(l, i)], ok = a === q.answer;
+      return '<li><div class="qmeta"><span>' + (i + 1) + " / " + total + '</span><span class="tag ' + q.kind + '">' + (q.kind === "why" ? "Why it exists" : "What it is") + '</span></div><p class="qp">' + rich(q.prompt) + '</p><ul class="choices">' +
+        order(qid(l, i), q.choices.length).map((j, pos) => {
+          const sel = a === j;
+          return '<li><button data-act="answer" data-q="' + i + '" data-c="' + j + '"' + (ok ? " disabled" : "") + ' class="' + (sel ? (j === q.answer ? "sel-right" : "sel-wrong") : "") + '"' + (sel ? ' aria-pressed="true"' : "") + '><span class="L">' + "ABCD"[pos] + "</span><span>" + rich(q.choices[j]) + "</span></button></li>";
+        }).join("") + "</ul>" + (a !== undefined ? '<p class="fb" aria-live="polite"><b>' + (ok ? "Yes." : "Not quite.") + "</b> " + rich(q.why) + "</p>" : "") + "</li>";
+    }).join("") + "</ol>" + (right === total ? '<div class="done-note">Done. ' + (l.next.length ? "This unlocks: " + l.next.map(n => '<a class="link" href="#l-' + n + '">' + esc(BY[n].title) + "</a>").join(", ") + "." : "That was the last lesson.") + "</div>" : "") + "</section>";
+}
+function viewLesson() {
+  const l = BY[R.slug], t = TR[l.track];
+  const prev = LESSONS[l.number - 2], next = LESSONS[l.number];
+  return '<main id="content"><div class="wrap narrow"><div class="lesson-head"><p class="eyebrow">' + pad(l.number) + " · " + esc(t.title) + " · " + l.minutes + " min</p><h1>" + esc(l.title) + '</h1><p class="lede">' + rich(l.summary) + "</p></div>" +
+    miniMap(l) + '<div class="lesson-body">' + l.blocks.map(block).join("") + "</div>" +
+    '<section class="why" aria-labelledby="why-h"><h2 id="why-h">Why it exists</h2><p class="sub">The part worth being able to say in your own words.</p><dl><dt>Without it</dt><dd>' + rich(l.why.without) + "</dd><dt>Rust's answer</dt><dd>" + rich(l.why.answer) + "</dd><dt>The cost</dt><dd>" + rich(l.why.cost) + "</dd></dl></section>" +
+    quiz(l) +
+    '<nav class="pager" aria-label="Lessons">' + (prev ? '<a href="#l-' + prev.slug + '"><span class="d">← ' + pad(prev.number) + '</span><span class="t">' + esc(prev.title) + "</span></a>" : '<a href="#map"><span class="d">← Map</span><span class="t">All lessons</span></a>') +
+    (next ? '<a class="nx" href="#l-' + next.slug + '"><span class="d">' + pad(next.number) + ' →</span><span class="t">' + esc(next.title) + "</span></a>" : '<a class="nx" href="#map"><span class="d">Finished →</span><span class="t">Back to the map</span></a>') + "</nav></div></main>";
+}
+let gq = "";
+const termsHtml = list => list.length ? list.map(t => '<div class="term"><h2>' + esc(t.name) + "</h2><div><p>" + rich(t.body) + '</p><a class="link" href="#l-' + t.lesson + '">Lesson ' + pad(BY[t.lesson].number) + " · " + esc(BY[t.lesson].title) + "</a></div></div>").join("") : '<p class="muted" style="padding:16px 0">No term matches that.</p>';
+const glossFilter = () => { const q = gq.trim().toLowerCase(); return GLOSSARY.filter(t => !q || (t.name + " " + t.body).toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)); };
+function viewGlossary() {
+  return '<main id="content" class="ref"><div class="wrap narrow"><p class="eyebrow">' + GLOSSARY.length + ' terms</p><h1>Glossary</h1><p class="lede">Each word in a sentence or two, with the lesson that teaches it.</p>' +
+    '<input class="filter" id="gq" type="search" placeholder="Filter terms" aria-label="Filter terms" value="' + esc(gq) + '"><div class="terms" id="terms">' + termsHtml(glossFilter()) + "</div></div></main>";
+}
+function viewSheet() {
+  return '<main id="content" class="ref"><div class="wrap"><p class="eyebrow">Keep this open</p><h1>The pocket sheet</h1><p class="lede">The whole course, one line per idea.</p><div class="sheet">' +
+    SHEET.map(s => "<section><h2>" + esc(s.title) + "</h2><table>" + s.rows.map(r => "<tr><td>" + esc(r[0]) + "</td><td>" + rich(r[1]) + "</td></tr>").join("") + "</table></section>").join("") + "</div></div></main>";
+}
+function viewErrors() {
+  return '<main id="content" class="ref"><div class="wrap narrow"><p class="eyebrow">' + ERRORS.length + ' errors</p><h1>What the compiler is saying</h1><p class="lede">The concurrency errors you will meet first. Each broken snippet was checked to fail with exactly this message, and each fix to compile.</p><div class="errs">' +
+    ERRORS.map(e => '<article class="errcard"><div class="code-id">' + esc(e.code) + "</div><h2>" + esc(e.title) + '</h2><div class="err">' + esc(e.message) + "</div><p>" + rich(e.meaning) + "</p><p><b>Fix.</b> " + rich(e.fix) + "</p>" +
+      '<div class="bf"><div class="code"><div class="cap"><span>fails</span></div><pre><code>' + hl(e.broken) + '</code></pre></div><div class="code"><div class="cap"><span>compiles</span></div><pre><code>' + hl(e.fixed) + "</code></pre></div></div>" +
+      '<p style="font-size:14px"><a class="link" href="#l-' + e.lesson + '">Lesson ' + pad(BY[e.lesson].number) + " · " + esc(BY[e.lesson].title) + "</a></p></article>").join("") + "</div></div></main>";
+}
+
+function render(keepScroll) {
+  const y = window.scrollY;
+  Object.values(figState).forEach(s => clearTimeout(s.t));
+  let body;
+  if (R.v === "lesson") body = viewLesson();
+  else if (R.v === "glossary") body = viewGlossary();
+  else if (R.v === "sheet") body = viewSheet();
+  else if (R.v === "errors") body = viewErrors();
+  else body = viewHome();
+  $("#app").innerHTML = header() + body + footer();
+  if (R.v === "map") afterMap();
+  setupFigures();
+  const titles = { lesson: R.slug && pad(BY[R.slug].number) + ". " + BY[R.slug].title, glossary: "Glossary", sheet: "Pocket sheet", errors: "Compiler errors" };
+  document.title = (titles[R.v] ? titles[R.v] + " · " : "") + "Anneal";
+  if (keepScroll) window.scrollTo(0, y);
+}
+
+window.addEventListener("hashchange", () => {
+  if (location.hash === "#content") return;
+  const prev = R; R = route(); armed = false;
+  if (R.v === "lesson") { P.last = R.slug; save(); }
+  if (prev.v === R.v && prev.slug === R.slug) return;
+  render(); window.scrollTo(0, 0);
+});
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-skip]")) { e.preventDefault(); const m = $("#content"); if (m) { m.setAttribute("tabindex", "-1"); m.focus(); } return; }
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const act = a.dataset.act;
+  if (act === "answer") {
+    const l = BY[R.slug], i = +a.dataset.q, c = +a.dataset.c;
+    P.answers[qid(l, i)] = c;
+    if (l.quiz.every((q, k) => P.answers[qid(l, k)] === q.answer) && !isDone(l.slug)) { P.done.push(l.slug); toast("Lesson " + pad(l.number) + " done"); }
+    save(); render(true);
+  } else if (act === "copy") {
+    const pre = a.closest(".code").querySelector("pre"), b = BY[R.slug].blocks[+a.dataset.i];
+    const fallback = () => { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press Ctrl+C or ⌘C to copy."); };
+    try { navigator.clipboard.writeText(b.code).then(() => toast("Copied"), fallback); } catch (err) { fallback(); }
+  } else if (act.startsWith("fig-")) {
+    const el = a.closest(".fig"), st = figState[el.dataset.key], n = FIG[el.dataset.fig].frames.length;
+    if (act === "fig-play") { st.playing = !st.playing; if (st.playing && st.i === n - 1) st.i = 0; }
+    else { st.playing = false; st.i = (st.i + (act === "fig-next" ? 1 : -1) + n) % n; }
+    figApply(el, false); figTick(el);
+  } else if (act === "reset") { armed = true; render(true); }
+  else if (act === "reset-no") { armed = false; render(true); }
+  else if (act === "reset-yes") { P = { answers: {}, done: [], last: null, updatedAt: 0 }; armed = false; save(); render(true); toast("Progress cleared"); }
+});
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.dataset.act === "pick") { pickState[R.slug + ":" + t.dataset.i] = t.value; render(true); const el = document.querySelector('input[name="pk-' + t.dataset.i + '"][value="' + t.value + '"]'); if (el) el.focus({ preventScroll: true }); }
+});
+document.addEventListener("input", e => { if (e.target.id === "gq") { gq = e.target.value; $("#terms").innerHTML = termsHtml(glossFilter()); } });
+window.addEventListener("resize", () => { const n = window.innerWidth < 640; if (n !== narrow) { narrow = n; if (R.v === "lesson") render(true); } });
+document.addEventListener("visibilitychange", () => { if (document.hidden) Object.values(figState).forEach(s => clearTimeout(s.t)); else document.querySelectorAll(".fig").forEach(figTick); });
+
+if (R.v === "lesson") { P.last = R.slug; try { localStorage.setItem(KEY, JSON.stringify(P)); } catch (e) { } }
+render();
+connect().then(() => { const n = $("#savenote"); if (remote && n) n.textContent = "Progress is saved to your claude.ai account and this browser."; });
+})();
+
+</script>
+</body></html>
